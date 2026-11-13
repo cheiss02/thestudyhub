@@ -30,8 +30,8 @@ window.STUDYHUB = {
   // Session start times, 24-hour clock. Each session is about 30 minutes.
   TIMES: ['15:30', '16:00', '16:30', '17:00', '17:30', '18:00'],
 
-  // How many weeks ahead families can book (this week + next week = 2).
-  WEEKS_AHEAD: 2,
+  // How many weeks ahead families can book and tutors can plan (max 9).
+  WEEKS_AHEAD: 8,
 
   LANGUAGES: ['Spanish', 'Mandarin', 'Cantonese', 'Vietnamese', 'Korean', 'Arabic', 'Tagalog', 'Armenian', 'Farsi'],
   SUBJECTS: ['Reading', 'Writing', 'Math', 'Science', 'Spelling'],

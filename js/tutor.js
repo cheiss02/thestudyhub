@@ -5,7 +5,7 @@
    - Approved: requests (approve/decline), weekly schedule, profile
    ===================================================================== */
 
-const T = { user: null, me: null, priv: null, avail: [], reqs: [], history: [], tab: 'requests', photos: {} };
+const T = { user: null, me: null, priv: null, avail: [], dates: [], reqs: [], history: [], tab: 'requests', week: 0, photos: {} };
 
 async function loadMe() {
   const [t, p] = await Promise.all([
@@ -16,12 +16,14 @@ async function loadMe() {
 }
 async function loadDashboard() {
   const from = isoDate(new Date(Date.now() - 30 * 864e5));
-  const [a, r, h] = await Promise.all([
-    sb.from('availability').select('dow,slot').eq('tutor_id', T.user.id),
+  const [a, r, h, x] = await Promise.all([
+    sb.from('availability').select('tutor_id,dow,slot').eq('tutor_id', T.user.id),
     sb.from('requests').select('*').eq('tutor_id', T.user.id).gte('session_date', from).order('session_date').order('slot'),
     sb.from('requests').select('id,parent_id,parent_name,child_first,grade,subject,session_date,slot,attended,minutes,session_note,completed_at')
       .eq('tutor_id', T.user.id).not('completed_at', 'is', null).order('session_date', { ascending: false }),
+    sb.from('availability_dates').select('tutor_id,day,slot,open').eq('tutor_id', T.user.id).gte('day', today()),
   ]);
+  T.dates = x.data || [];
   T.avail = a.data || [];
   // Hide finished sessions older than a week from the Requests list (they live in History).
   const weekAgo = isoDate(new Date(Date.now() - 7 * 864e5));
@@ -98,19 +100,73 @@ function reqCard(r) {
   </article>`;
 }
 
+// Every-week schedule (repeats).
 function weekEditor() {
-  const has = (dow, s) => T.avail.some(a => a.dow === dow && a.slot === s);
-  const nextWeek = weekDays(1);
-  const bookedNext = (dow, s) => T.reqs.find(r => ['pending', 'approved'].includes(r.status) && r.slot === s && r.session_date === nextWeek.find(d => d.dow === dow)?.date);
+  const has = (dow, sl) => T.avail.some(a => a.dow === dow && a.slot === sl);
   let h = `<div class="week"><div></div>${C.DAYS.map(d => `<div class="dh">${d.name}</div>`).join('')}`;
-  for (const s of C.TIMES) {
-    h += `<div class="tm">${fmtTime(s)}</div>`;
+  for (const sl of C.TIMES) {
+    h += `<div class="tm">${fmtTime(sl)}</div>`;
     for (const d of C.DAYS) {
-      const on = has(d.dow, s), b = bookedNext(d.dow, s);
-      h += `<button class="tog ${on ? 'on' : ''}" data-tog="${d.dow}|${s}" aria-pressed="${on}" title="${b ? 'Booked next week by ' + esc(b.child_first) : ''}">${on ? (b ? esc(b.child_first) : 'Open') : ''}</button>`;
+      const on = has(d.dow, sl);
+      h += `<button class="tog ${on ? 'on' : ''}" data-tog="${d.dow}|${sl}" aria-pressed="${on}" aria-label="Every ${d.name} at ${fmtTime(sl)}">${on ? 'Open' : ''}</button>`;
     }
   }
   return h + '</div>';
+}
+
+// Calendar for specific dates: day off, or extra times, up to WEEKS_AHEAD.
+const dateCell = (date, dow, sl) => {
+  const o = T.dates.find(x => x.day === date && x.slot === sl);
+  const weekly = T.avail.some(a => a.dow === dow && a.slot === sl);
+  const booked = T.reqs.find(r => r.session_date === date && r.slot === sl && ['pending', 'approved'].includes(r.status));
+  if (booked) return { state: 'bk', label: esc(booked.child_first) };
+  if (o) return o.open ? { state: 'extra', label: 'Extra', o } : { state: 'off', label: 'Off', o };
+  return weekly ? { state: 'on', label: 'Open' } : { state: '', label: '' };
+};
+function calendarEditor() {
+  const days = weekDays(T.week);
+  let h = `<div class="week cal"><div></div>${days.map(d => {
+    const past = d.date < today();
+    const anyOpen = C.TIMES.some(sl => ['on', 'extra'].includes(dateCell(d.date, d.dow, sl).state));
+    return `<div class="dh">${d.name}<small>${d.label}</small>${past ? '' : `<button class="dayoff" data-dayoff="${d.date}|${d.dow}" ${anyOpen ? '' : 'data-restore="1"'}>${anyOpen ? 'Day off' : 'Undo'}</button>`}</div>`;
+  }).join('')}`;
+  for (const sl of C.TIMES) {
+    h += `<div class="tm">${fmtTime(sl)}</div>`;
+    for (const d of days) {
+      const c = dateCell(d.date, d.dow, sl);
+      const past = isPast(d.date, sl);
+      h += past || c.state === 'bk'
+        ? `<div class="tog ${c.state === 'bk' ? 'bk' : 'past'}" title="${c.state === 'bk' ? 'Booked' : 'Past'}">${c.state === 'bk' ? c.label : ''}</div>`
+        : `<button class="tog ${c.state}" data-cal="${d.date}|${d.dow}|${sl}" aria-label="${d.name} ${d.label} at ${fmtTime(sl)}: ${c.label || 'closed'}">${c.label}</button>`;
+    }
+  }
+  return h + '</div>';
+}
+async function toggleDate(date, dow, sl) {
+  const c = dateCell(date, dow, sl);
+  const key = { tutor_id: T.user.id, day: date, slot: sl };
+  const weekly = T.avail.some(a => a.dow === dow && a.slot === sl);
+  const { error } = c.o
+    ? await sb.from('availability_dates').delete().match(key)                                   // back to the weekly default
+    : await sb.from('availability_dates').upsert({ ...key, open: !weekly });                     // weekly → off, closed → extra
+  if (error) return toast(error.message);
+  T.dates = c.o ? T.dates.filter(x => !(x.day === date && x.slot === sl)) : [...T.dates, { ...key, open: !weekly }];
+  swap(dashboard);
+}
+async function toggleDay(date, dow, restore) {
+  if (restore) {
+    const { error } = await sb.from('availability_dates').delete().eq('tutor_id', T.user.id).eq('day', date);
+    if (error) return toast(error.message);
+    T.dates = T.dates.filter(x => x.day !== date);
+  } else {
+    const rows = C.TIMES.filter(sl => dateCell(date, dow, sl).state === 'on' && !isPast(date, sl)).map(sl => ({ tutor_id: T.user.id, day: date, slot: sl, open: false }));
+    const extras = T.dates.filter(x => x.day === date && x.open);
+    if (extras.length) await sb.from('availability_dates').delete().eq('tutor_id', T.user.id).eq('day', date).eq('open', true);
+    if (rows.length) { const { error } = await sb.from('availability_dates').upsert(rows); if (error) return toast(error.message); }
+    T.dates = [...T.dates.filter(x => !(x.day === date && x.open)), ...rows];
+    toast('Day off saved. Families can\'t book you that day.');
+  }
+  swap(dashboard);
 }
 
 function profileForm() {
@@ -135,13 +191,16 @@ function dashboard() {
   let body;
   if (T.tab === 'requests') body = list.length ? `<div class="stack1">${list.map(reqCard).join('')}</div>` : '<div class="empty">No requests yet. Families see your open times on the Find a tutor page.</div>';
   else if (T.tab === 'history') body = historyView();
-  else if (T.tab === 'week') body = `<div class="card"><h2>My weekly times</h2><p class="meta" style="margin:6px 0 16px">Tap a time to open or close it. It repeats every week. Closing a time doesn't cancel sessions already booked.</p>${weekEditor()}</div>`;
+  else if (T.tab === 'week') body = `<div class="sched">
+    <div class="card"><h2>Calendar</h2><p class="meta" style="margin:6px 0 14px">Plan up to ${C.WEEKS_AHEAD} weeks ahead. Tap a time to change just that date: <span class="key on">Open</span> <span class="key extra">Extra</span> <span class="key off">Off</span>. Use <b>Day off</b> for holidays and tests.</p>
+      ${weekNav(T.week, C.WEEKS_AHEAD, 'data-tweek')}${calendarEditor()}</div>
+    <div class="card"><h2>Every week</h2><p class="meta" style="margin:6px 0 14px">Your usual times. They repeat every week unless you change a date in the calendar. Closing a time doesn't cancel sessions already booked.</p>${weekEditor()}</div></div>`;
   else body = profileForm();
   page(`${T.me.status === 'paused' ? '<div class="warn" style="margin-bottom:18px">Your profile is paused by the club, so families can\'t see your times right now.</div>' : ''}
     ${!T.priv?.meet_link ? '<div class="warn" style="margin-bottom:18px">Add your Google Meet link in <b>Profile</b> so you can approve requests.</div>' : ''}
     <div class="top"><div><h1>Hi, ${esc(T.me.name.split(' ')[0])}</h1><p>${[pending ? `${pending} request${pending > 1 ? 's' : ''} waiting for you. Look at the homework photos, then approve or decline within 48 hours.` : '', toLog ? `${toLog} finished session${toLog > 1 ? 's' : ''} to mark as done.` : ''].filter(Boolean).join(' ') || "You're all caught up."}</p></div>
     <div class="stat mini"><b>${fmtHours(T.history.reduce((n, h) => n + (h.minutes || 0), 0))}</b><span>volunteer time logged</span></div></div>
-    <div class="tabs">${[['requests', `Requests${pending + toLog ? ` (${pending + toLog})` : ''}`], ['history', 'History'], ['week', 'My week'], ['profile', 'Profile']].map(([k, l]) => `<button class="tab ${T.tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>${body}`);
+    <div class="tabs">${[['requests', `Requests${pending + toLog ? ` (${pending + toLog})` : ''}`], ['week', 'My schedule'], ['history', 'History'], ['profile', 'Profile']].map(([k, l]) => `<button class="tab ${T.tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>${body}`);
   $('#proff')?.addEventListener('submit', saveProfile);
 }
 
@@ -199,8 +258,11 @@ function doneModal(id) {
 
 /* ---------- events ---------- */
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-tab],[data-tog],[data-answer],[data-cancel],[data-zoom],[data-done]');
-  if (!b) return;
+  const b = e.target.closest('[data-tab],[data-tog],[data-answer],[data-cancel],[data-zoom],[data-done],[data-cal],[data-tweek],[data-dayoff]');
+  if (!b || b.disabled) return;
+  if (b.dataset.tweek) { T.week = +b.dataset.tweek; return swap(dashboard); }
+  if (b.dataset.cal) { const [d, dow, sl] = b.dataset.cal.split('|'); return toggleDate(d, +dow, sl); }
+  if (b.dataset.dayoff) { const [d, dow] = b.dataset.dayoff.split('|'); return toggleDay(d, +dow, !!b.dataset.restore); }
   if (b.dataset.done) return doneModal(b.dataset.done);
   if (b.dataset.tab) { T.tab = b.dataset.tab; dashboard(); }
   else if (b.dataset.zoom) lightbox(b.dataset.zoom);
@@ -211,7 +273,7 @@ document.addEventListener('click', async e => {
       ? await sb.from('availability').delete().match({ tutor_id: T.user.id, dow: d, slot })
       : await sb.from('availability').insert({ tutor_id: T.user.id, dow: d, slot });
     if (error) return toast(error.message);
-    T.avail = on ? T.avail.filter(a => !(a.dow === d && a.slot === slot)) : [...T.avail, { dow: d, slot }];
+    T.avail = on ? T.avail.filter(a => !(a.dow === d && a.slot === slot)) : [...T.avail, { tutor_id: T.user.id, dow: d, slot }];
     dashboard();
   } else if (b.dataset.answer) {
     const [id, yes] = b.dataset.answer.split('|');

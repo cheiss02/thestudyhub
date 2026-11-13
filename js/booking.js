@@ -4,33 +4,40 @@
    request with homework photos. Signing in is only needed to send.
    ===================================================================== */
 
-const state = { lang: 'All', week: 0, user: null, family: null, tutors: [], avail: [], booked: new Set(), draft: null };
+const state = { lang: 'All', week: 0, user: null, family: null, tutors: [], avail: [], dates: [], booked: new Set(), draft: null };
 const PENDING_KEY = 'studyhub-pending-booking';
 
 async function loadSchedule() {
   const days = [...Array(C.WEEKS_AHEAD).keys()].flatMap(weekDays);
-  const [t, a, b] = await Promise.all([
+  const [t, a, b, x] = await Promise.all([
     sb.from('tutors').select('id,name,grade,langs,subjects,bio').eq('status', 'active').order('name'),
     sb.from('availability').select('tutor_id,dow,slot'),
     sb.rpc('booked_slots', { from_date: days[0].date, to_date: days.at(-1).date }),
+    sb.from('availability_dates').select('tutor_id,day,slot,open').gte('day', days[0].date).lte('day', days.at(-1).date),
   ]);
+  state.dates = x.data || [];
   state.loadError = !!(t.error || a.error || b.error);
   state.tutors = t.data || [];
   state.avail = a.data || [];
   state.booked = new Set((b.data || []).map(r => `${r.tutor_id}|${r.session_date}|${r.slot}`));
 }
 
-const isOpen = (tid, dow, slot) => state.avail.some(a => a.tutor_id === tid && a.dow === dow && a.slot === slot);
+const isOpen = (tid, d, slot) => openAt(state.avail, state.dates, tid, d.date, d.dow, slot);
+// Times a tutor could ever offer (weekly + extra dates), so rows only show when needed.
+const allTimes = () => [...new Set([...C.TIMES, ...state.dates.filter(x => x.open).map(x => x.slot)])].sort();
 
 function weekGrid(t) {
   const days = weekDays(state.week);
-  const times = C.TIMES.filter(tm => days.some(d => isOpen(t.id, d.dow, tm)));
-  if (!times.length) return '<div class="empty">No open times this week.</div>';
+  const times = allTimes().filter(tm => days.some(d => isOpen(t.id, d, tm) && !isPast(d.date, tm)));
+  if (!times.length) {
+    const later = [...Array(C.WEEKS_AHEAD).keys()].find(w => w > state.week && weekDays(w).some(d => allTimes().some(tm => isOpen(t.id, d, tm))));
+    return `<div class="empty">No open times this week.${later !== undefined ? ` <button class="linkish" data-week="${later}">See ${later === state.week + 1 ? 'next week' : 'week of ' + weekDays(later)[0].label} →</button>` : ''}</div>`;
+  }
   let h = `<div class="week"><div></div>${days.map(d => `<div class="dh">${d.name}<small>${d.label}</small></div>`).join('')}`;
   for (const tm of times) {
     h += `<div class="tm">${fmtTime(tm)}</div>`;
     for (const d of days) {
-      if (!isOpen(t.id, d.dow, tm) || isPast(d.date, tm)) h += '<div class="cell"></div>';
+      if (!isOpen(t.id, d, tm) || isPast(d.date, tm)) h += '<div class="cell"></div>';
       else if (state.booked.has(`${t.id}|${d.date}|${tm}`)) h += '<div class="busy">Booked</div>';
       else h += `<button class="slot" data-book="${t.id}|${d.date}|${tm}" aria-label="Book ${esc(t.name)}, ${fmtDate(d.date)} at ${fmtTime(tm)}">Open</button>`;
     }
@@ -46,10 +53,9 @@ function render() {
   }
   const langs = ['All', ...C.LANGUAGES.filter(l => state.tutors.some(t => t.langs.includes(l)))];
   const list = state.tutors.filter(t => state.lang === 'All' || t.langs.includes(state.lang));
-  const weeks = [...Array(C.WEEKS_AHEAD).keys()];
   $('#schedule').innerHTML = `
     <div class="filters">
-      <div class="chips" role="group" aria-label="Week">${weeks.map(w => `<button class="chip ${state.week === w ? 'on' : ''}" aria-pressed="${state.week === w}" data-week="${w}">${w === 0 ? 'This week' : w === 1 ? 'Next week' : `Week of ${weekDays(w)[0].label}`}</button>`).join('')}</div>
+      ${weekNav(state.week, C.WEEKS_AHEAD, 'data-week')}
       <div class="chips" role="group" aria-label="Language">${langs.map(l => `<button class="chip ${state.lang === l ? 'on' : ''}" aria-pressed="${state.lang === l}" data-lang="${esc(l)}">${esc(l)}</button>`).join('')}</div>
     </div>
     <div class="grid2 enter">${list.map((t, i) => `<article class="card tutor-card" style="--i:${i}">
@@ -153,6 +159,7 @@ async function submitRequest(e) {
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-book],[data-lang],[data-week],[data-rm]');
+  if (b?.disabled) return;
   if (!b) return;
   if (b.dataset.lang) { state.lang = b.dataset.lang; swap(render); }
   else if (b.dataset.week) { state.week = +b.dataset.week; swap(render); }

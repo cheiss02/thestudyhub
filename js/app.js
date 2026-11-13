@@ -45,6 +45,23 @@ function weekDays(offset) {
     return { ...d, date: isoDate(date), label: `${MONTHS[date.getMonth()]} ${date.getDate()}` };
   });
 }
+// Is a tutor open at this date/time? Weekly schedule, unless that date has its own change.
+function openAt(avail, dates, tid, dateStr, dow, slot) {
+  const o = dates.find(x => x.tutor_id === tid && x.day === dateStr && x.slot === slot);
+  return o ? o.open : avail.some(a => a.tutor_id === tid && a.dow === dow && a.slot === slot);
+}
+// 'Nov 16 – 20' for a list of week days
+const weekRange = days => `${days[0].label} – ${days.at(-1).label.split(' ')[0] === days[0].label.split(' ')[0] ? days.at(-1).label.split(' ')[1] : days.at(-1).label}`;
+// Week picker: ‹ This week · Nov 16 – 20 ›
+function weekNav(offset, max, attr) {
+  const days = weekDays(offset);
+  const name = offset === 0 ? 'This week' : offset === 1 ? 'Next week' : `In ${offset} weeks`;
+  return `<div class="weeknav" role="group" aria-label="Choose week">
+    <button class="wk-btn" ${attr}="${offset - 1}" ${offset <= 0 ? 'disabled' : ''} aria-label="Previous week">‹</button>
+    <div class="wk-label"><b>${name}</b><span>${weekRange(days)}</span></div>
+    <button class="wk-btn" ${attr}="${offset + 1}" ${offset >= max - 1 ? 'disabled' : ''} aria-label="Next week">›</button></div>`;
+}
+
 // Is this date + time already in the past?
 function isPast(dateStr, slot) {
   const [h, m] = slot.split(':').map(Number);

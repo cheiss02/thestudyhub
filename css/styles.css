@@ -359,3 +359,28 @@ details[open] p { animation: rise .3s var(--ease); }
 .linkish.danger { color: var(--red); }
 .danger-zone { margin-top: 36px; border-color: var(--red); max-width: 760px; }
 @media (max-width: 600px) { .hist li { grid-template-columns: 1fr; } .hist .hn { grid-column: 1; } }
+/* Week navigator and tutor calendar */
+.weeknav { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; }
+.wk-btn { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--edge); background: var(--card); color: var(--ink); font: 700 22px/1 Poppins, sans-serif; cursor: pointer; box-shadow: 0 3px 0 var(--edge); transition: transform var(--quick) var(--ease); }
+.wk-btn:disabled { opacity: .35; cursor: default; box-shadow: none; border-color: var(--line); }
+.wk-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--edge); }
+.wk-label { min-width: 150px; text-align: center; line-height: 1.2; }
+.wk-label b { display: block; font: 700 16px Poppins, sans-serif; }
+.wk-label span { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.filters { align-items: center; }
+.filters .weeknav { margin: 0 8px 18px 0; }
+.sched { display: grid; gap: 18px; }
+.tog.extra { background: var(--blue); border: 2px solid var(--edge); color: #1d2940; }
+.tog.off { background: repeating-linear-gradient(135deg, var(--rsoft) 0 6px, transparent 6px 12px); border: 1px dashed var(--red); color: var(--red); }
+.tog.bk { display: grid; place-items: center; background: #1d7a6e; border-color: #1d7a6e; color: #fff; }
+.tog.past { opacity: .35; cursor: default; }
+.dayoff { display: block; margin: 6px auto 0; border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 999px; padding: 3px 8px; font: 600 12px Inter, sans-serif; cursor: pointer; }
+.dayoff:hover { border-color: var(--red); color: var(--red); }
+.key { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 13px; font-weight: 700; margin: 0 2px; }
+.key.on { background: var(--yellow); color: #1d2940; }
+.key.extra { background: var(--blue); color: #1d2940; }
+.key.off { background: var(--rsoft); color: var(--red); }
+.tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { white-space: nowrap; flex: none; }
+.tog.past { background: var(--soft); border-color: transparent; }
