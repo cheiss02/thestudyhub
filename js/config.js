@@ -9,7 +9,7 @@ window.STUDYHUB = {
   SUPABASE_ANON_KEY: 'YOUR-ANON-PUBLIC-KEY',
 
   SITE_URL: 'https://thestudyhub.us',
-  CLUB_EMAIL: 'hello@thestudyhub.us',
+  CLUB_EMAIL: 'help@thestudyhub.us',
   INSTAGRAM: 'https://www.instagram.com/the_studyhub1/',
 
   // Turn on after Google sign-in is set up in Supabase (see README).

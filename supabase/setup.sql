@@ -322,7 +322,8 @@ create policy hw_delete on storage.objects for delete to authenticated
 -- 7. ADMINS — put the real club emails here, then run this file.
 -- ---------------------------------------------------------------------
 insert into public.admins (email) values
-  ('hello@thestudyhub.us')
+  ('support@thestudyhub.us'),
+  ('help@thestudyhub.us')
   -- ,('advisor@school.org')
   -- ,('officer@school.org')
 on conflict do nothing;

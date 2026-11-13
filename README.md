@@ -55,14 +55,14 @@ Plain HTML, CSS and JavaScript. No build step: edit a file, commit, and the site
    turning **off** "Verify JWT" for both.
 5. Edge Functions → Secrets: `RESEND_API_KEY`, `WEBHOOK_SECRET`, `CRON_SECRET`,
    `MAIL_FROM` = `The Study Hub <no-reply@thestudyhub.us>`, `SITE_URL` = `https://thestudyhub.us`,
-   `CLUB_EMAIL` = `hello@thestudyhub.us`.
+   `CLUB_EMAIL` = `help@thestudyhub.us`.
 6. Database → Webhooks → new webhook on table `requests`, events Insert + Update,
    type Supabase Edge Function `notify`, add header `x-webhook-secret` = your WEBHOOK_SECRET.
 7. Database → Extensions: turn on `pg_cron` and `pg_net`, then run `supabase/schedule.sql`
    (fill in the project URL and CRON_SECRET).
 
 ### 3. Club inbox (Zoho Mail, free)
-Sign up for Zoho Mail Forever Free with `thestudyhub.us`, create `hello@thestudyhub.us`,
+Sign up for Zoho Mail Forever Free with `thestudyhub.us`, create `help@thestudyhub.us`,
 and add Zoho's MX, SPF and DKIM records in GoDaddy. Resend uses the `send.` subdomain, so they don't clash.
 
 ### 4. Website (GitHub Pages + GoDaddy)

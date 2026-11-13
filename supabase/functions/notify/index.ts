@@ -8,13 +8,13 @@
 //   WEBHOOK_SECRET   any long random text (same value in the webhook header)
 //   MAIL_FROM        The Study Hub <no-reply@thestudyhub.us>
 //   SITE_URL         https://thestudyhub.us
-//   CLUB_EMAIL       hello@thestudyhub.us
+//   CLUB_EMAIL       help@thestudyhub.us
 // =====================================================================
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const env = (k: string, d = "") => Deno.env.get(k) ?? d;
 const SITE = env("SITE_URL", "https://thestudyhub.us");
-const CLUB = env("CLUB_EMAIL", "hello@thestudyhub.us");
+const CLUB = env("CLUB_EMAIL", "help@thestudyhub.us");
 const sb = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
