@@ -3,7 +3,8 @@
 // Runs when a request is created or its status changes
 // (Supabase Database Webhook on the "requests" table, see README).
 //
-// Secrets to set in Supabase → Edge Functions → Secrets:
+// Secrets to set in Supabase → Edge Functions → Secrets (never in GitHub):
+//   STUDYHUB_SECRET_KEY  your sb_secret_... key (Project Settings → API Keys)
 //   RESEND_API_KEY   from resend.com
 //   WEBHOOK_SECRET   any long random text (same value in the webhook header)
 //   MAIL_FROM        The Study Hub <no-reply@thestudyhub.us>
@@ -15,7 +16,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const env = (k: string, d = "") => Deno.env.get(k) ?? d;
 const SITE = env("SITE_URL", "https://thestudyhub.us");
 const CLUB = env("CLUB_EMAIL", "help@thestudyhub.us");
-const sb = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
+const sb = createClient(env("SUPABASE_URL"), env("STUDYHUB_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY"));
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 function when(date: string, slot: string) {

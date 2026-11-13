@@ -3,11 +3,11 @@
 // Deletes homework photos 30 days after each session and removes
 // requests older than one year. Runs once a day (see schedule.sql).
 //
-// Secret to set: CRON_SECRET (any long random text, same as in schedule.sql)
+// Secrets to set (never in GitHub): STUDYHUB_SECRET_KEY (sb_secret_...) and CRON_SECRET (any long random text, same as in schedule.sql)
 // =====================================================================
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("STUDYHUB_SECRET_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const daysAgo = (n: number) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
 
 Deno.serve(async (req) => {

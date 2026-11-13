@@ -5,7 +5,7 @@
 
 const C = window.STUDYHUB;
 const READY = !C.SUPABASE_URL.includes('YOUR-PROJECT');
-const sb = READY ? window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY) : null;
+const sb = READY ? window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_PUBLISHABLE_KEY) : null;
 
 /* ---------- small helpers ---------- */
 const $ = (sel, el = document) => el.querySelector(sel);

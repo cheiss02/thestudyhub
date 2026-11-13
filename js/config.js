@@ -4,9 +4,12 @@
    ===================================================================== */
 
 window.STUDYHUB = {
-  // From Supabase: Project Settings → API. The "anon public" key is safe to put here.
-  SUPABASE_URL: 'https://YOUR-PROJECT.supabase.co',
-  SUPABASE_ANON_KEY: 'YOUR-ANON-PUBLIC-KEY',
+  // From Supabase: Project Settings → API Keys.
+  // The PUBLISHABLE key (sb_publishable_...) is made to be public: it only lets
+  // the website talk to the database, and the security rules in supabase/setup.sql
+  // decide what each person can see. NEVER put a secret key (sb_secret_...) in this file.
+  SUPABASE_URL: 'https://ekjyotgllvleiupzawog.supabase.co',
+  SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_9AUy56bHB-IRN0RojUr3gw_8rWw4boK',
 
   SITE_URL: 'https://thestudyhub.us',
   CLUB_EMAIL: 'help@thestudyhub.us',

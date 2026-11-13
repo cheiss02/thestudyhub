@@ -43,7 +43,7 @@ Plain HTML, CSS and JavaScript. No build step: edit a file, commit, and the site
 ### 1. Supabase (database, logins, photo storage)
 1. Create a free project at supabase.com (region: West US).
 2. SQL Editor → paste all of `supabase/setup.sql` → edit the admin emails at the bottom → **Run**.
-3. Project Settings → API: copy the **Project URL** and **anon public key** into `js/config.js`.
+3. Project Settings → API Keys: the **Project URL** and **publishable key** go in `js/config.js` (done).
 4. Authentication → URL Configuration: Site URL `https://thestudyhub.us`, Redirect URLs `https://thestudyhub.us/**`.
 
 ### 2. Emails (Resend, free)
@@ -53,7 +53,7 @@ Plain HTML, CSS and JavaScript. No build step: edit a file, commit, and the site
    user `resend`, password = the API key, sender `no-reply@thestudyhub.us`, name `The Study Hub`.
 4. Supabase → Edge Functions → deploy `notify` and `cleanup` (paste each `index.ts`),
    turning **off** "Verify JWT" for both.
-5. Edge Functions → Secrets: `RESEND_API_KEY`, `WEBHOOK_SECRET`, `CRON_SECRET`,
+5. Edge Functions → Secrets: `STUDYHUB_SECRET_KEY` (your `sb_secret_...` key), `RESEND_API_KEY`, `WEBHOOK_SECRET`, `CRON_SECRET`,
    `MAIL_FROM` = `The Study Hub <no-reply@thestudyhub.us>`, `SITE_URL` = `https://thestudyhub.us`,
    `CLUB_EMAIL` = `help@thestudyhub.us`.
 6. Database → Webhooks → new webhook on table `requests`, events Insert + Update,
@@ -76,6 +76,13 @@ Then tick **Enforce HTTPS** in GitHub Pages settings once it's available.
 ### 5. Optional: Google sign-in for tutors
 Set up a Google OAuth client, add it in Supabase → Authentication → Providers → Google,
 then set `GOOGLE_LOGIN: true` in `js/config.js`.
+
+## Keeping keys safe
+- **Public (fine in GitHub):** the Project URL and the publishable key (`sb_publishable_...`) in `js/config.js`.
+  They only let the site talk to the database; the rules in `supabase/setup.sql` decide what anyone can see.
+- **Secret (never in GitHub, never in chat):** the secret key (`sb_secret_...`), the Resend API key,
+  `WEBHOOK_SECRET`, `CRON_SECRET` and the database password. They live only in Supabase → Edge Functions → Secrets.
+- If a secret ever leaks: Supabase → Project Settings → API Keys → create a new secret key, update the secret, delete the old key.
 
 ## Privacy built in
 - Only a parent can book. The form collects the child's first name only.

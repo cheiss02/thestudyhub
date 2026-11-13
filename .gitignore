@@ -1,0 +1,6 @@
+# Never commit secrets
+.env
+.env.*
+*.local
+supabase/.temp/
+.DS_Store
