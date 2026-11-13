@@ -21,8 +21,8 @@ Plain HTML, CSS and JavaScript. No build step: edit a file, commit, and the site
 | `images/logo.svg` | Logo (replace with the real logo file any time) |
 | `supabase/setup.sql` | Database tables and security rules |
 | `supabase/functions/notify` | Sends emails when requests are made, approved, declined or cancelled |
-| `supabase/functions/cleanup` | Deletes homework photos 30 days after each session |
-| `supabase/schedule.sql` | Runs the cleanup every day |
+| `supabase/functions/cleanup` | Every 15 min: reminder emails 1 day and 1 hour before sessions, and deletes homework photos 30 days after each session |
+| `supabase/schedule.sql` | Runs the cleanup/reminder job every 15 minutes |
 
 ## Who logs in
 
@@ -32,7 +32,7 @@ Everyone signs in with their email: a link or a 6-digit code, no password. Kids 
 - **Admins:** only help@thestudyhub.us to start. Admins add or remove other admins on the Club admin page.
 
 ## Database updates to run (in order)
-`supabase/setup.sql` (first time only), then `supabase/migrations/002_admins.sql`, `003_family_approval.sql`, `004_hardening.sql` and `005_session_records.sql`.
+`supabase/setup.sql` (first time only), then `supabase/migrations/002_admins.sql`, `003_family_approval.sql`, `004_hardening.sql`, `005_session_records.sql`, `006_calendar_dates.sql` and `007_reminders.sql`.
 
 If you ever update the Supabase library version in the HTML files, update its `integrity` hash too (the browser refuses a file that doesn't match).
 
