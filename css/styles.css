@@ -333,3 +333,7 @@ details[open] p { animation: rise .3s var(--ease); }
   .quick-in { padding: 8px 12px; }
 }
 @media (max-width: 380px) { .brand b { font-size: 16px; } .brand img { width: 40px; height: 40px; } .brand { gap: 8px; } }
+/* Test fixes: bigger menu target, readable dates, visible outlines in dark mode */
+.menu-btn { min-height: 44px; min-width: 44px; justify-content: center; border-color: color-mix(in srgb, var(--ink) 45%, transparent); }
+.week .dh small { font-size: 12px; }
+@media (max-width: 600px) { .week .dh small { font-size: 12px; letter-spacing: -.01em; } }
