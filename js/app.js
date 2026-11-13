@@ -28,6 +28,12 @@ function parseDate(s) { const [y, m, d] = s.split('-').map(Number); return new D
 // '2026-11-16' -> 'Mon, Nov 16'
 const fmtDate = s => parseDate(s).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 const today = () => isoDate(new Date());
+// 135 minutes -> '2 h 15 min'
+function fmtHours(mins) {
+  const h = Math.floor(mins / 60), m = Math.round(mins % 60);
+  return h && m ? `${h} h ${m} min` : h ? `${h} h` : `${m} min`;
+}
+const sessionLabel = r => r.completed_at ? (r.attended ? `Done · ${r.minutes} min` : "Didn't join") : null;
 
 // Days of a school week. offset 0 = this week, 1 = next week.
 function weekDays(offset) {

@@ -4,24 +4,43 @@
    Admin emails are listed in the "admins" table (see README).
    ===================================================================== */
 
-const A = { tutors: [], priv: {}, avail: [], reqs: [], admins: [], families: [] };
+const A = { tutors: [], priv: {}, avail: [], reqs: [], admins: [], families: [], all: [], since: {} };
 const MAIN_ADMIN = 'help@thestudyhub.us';
 
 async function load() {
   const from = isoDate(new Date(Date.now() - 7 * 864e5));
-  const [t, p, a, r, ad, fm] = await Promise.all([
+  const [t, p, a, r, ad, fm, all, cs] = await Promise.all([
     sb.from('tutors').select('*').order('created_at'),
     sb.from('tutor_private').select('*'),
     sb.from('availability').select('tutor_id'),
-    sb.from('requests').select('id,tutor_id,session_date,slot,child_first,grade,subject,status,parent_name').gte('session_date', from).order('session_date').order('slot'),
+    sb.from('requests').select('id,tutor_id,session_date,slot,child_first,grade,subject,status,parent_name,completed_at,attended,minutes').gte('session_date', from).order('session_date').order('slot'),
     sb.from('admins').select('email').order('email'),
     sb.from('families').select('*').order('created_at', { ascending: false }),
+    sb.from('requests').select('id,tutor_id,created_at,completed_at,attended,minutes,photo_paths'),
+    sb.from('club_settings').select('key,since'),
   ]);
+  A.all = all.data || [];
+  A.since = Object.fromEntries((cs.data || []).map(x => [x.key, x.since]));
   A.families = fm.data || [];
   A.admins = (ad.data || []).map(x => x.email);
   A.tutors = t.data || []; A.avail = a.data || []; A.reqs = r.data || [];
   A.priv = Object.fromEntries((p.data || []).map(x => [x.tutor_id, x]));
 }
+
+// Counters that admins can reset ("start counting from today").
+function metrics() {
+  const after = (key, ts) => ts && ts >= (A.since[key] || '2000');
+  const done = A.all.filter(r => r.completed_at);
+  return {
+    hours: done.filter(r => after('hours', r.completed_at)).reduce((n, r) => n + (r.minutes || 0), 0),
+    sessions: done.filter(r => r.attended && after('sessions', r.completed_at)).length,
+    requests: A.all.filter(r => after('requests', r.created_at)).length,
+    families: A.families.filter(f => after('families', f.created_at)).length,
+    tutorMins: id => done.filter(r => r.tutor_id === id && after('hours', r.completed_at)).reduce((n, r) => n + (r.minutes || 0), 0),
+  };
+}
+const sinceLabel = key => !A.since[key] || A.since[key] < '2001' ? 'since the start' : `since ${fmtDate(A.since[key].slice(0, 10))}`;
+const resettable = (key, value, label) => `<div class="stat"><b>${value}</b><span>${label}</span><small class="since">${sinceLabel(key)} · <button class="linkish" data-reset="${key}">Reset</button></small></div>`;
 
 function render() {
   const active = A.tutors.filter(t => t.status === 'active');
@@ -30,13 +49,21 @@ function render() {
   const upcoming = A.reqs.filter(r => r.session_date >= today());
   const count = s => upcoming.filter(r => r.status === s).length;
   const statusLabel = { pending: 'Needs review', approved: 'Approved', declined: 'Declined', cancelled: 'Cancelled' };
+  const M = metrics();
   $('#main').innerHTML = `<section class="band"><div class="wrap">
     <div class="top"><div><h1>Club admin</h1><p>Approve new families and tutors, pause anyone who can't tutor, manage admins and keep an eye on sessions.</p></div></div>
+    <h2 style="margin-bottom:12px">Impact</h2>
+    <div class="stats">
+      ${resettable('hours', fmtHours(M.hours), 'of free help given')}
+      ${resettable('sessions', M.sessions, 'sessions completed')}
+      ${resettable('requests', M.requests, 'requests from families')}
+      ${resettable('families', M.families, 'families signed up')}</div>
+    <h2 style="margin-bottom:12px">Right now</h2>
     <div class="stats">
       <div class="stat"><b>${active.length}</b><span>active tutors</span></div>
       <div class="stat"><b>${new Set(active.flatMap(t => t.langs)).size}</b><span>languages</span></div>
       <div class="stat"><b>${count('pending')}</b><span>waiting on a tutor</span></div>
-      <div class="stat"><b>${count('approved')}</b><span>sessions coming up</span></div>
+      <div class="stat"><b>${upcoming.filter(r => r.status === 'approved' && !r.completed_at).length}</b><span>sessions coming up</span></div>
       <div class="stat"><b>${A.families.filter(f => f.status === 'approved').length}</b><span>approved families</span></div></div>
 
     <h2 style="margin-bottom:12px">New families${A.families.filter(f => f.status === 'pending').length ? ` (${A.families.filter(f => f.status === 'pending').length})` : ''}</h2>
@@ -57,14 +84,15 @@ function render() {
       : '<div class="empty" style="margin-bottom:28px">No applications waiting.</div>'}
 
     <h2 style="margin-bottom:12px">Tutors</h2>
-    <div class="scroll" style="margin-bottom:28px"><table class="stack"><thead><tr><th>Tutor</th><th>Email</th><th>Languages</th><th>Weekly times</th><th>Meet link</th><th>Status</th></tr></thead><tbody>
+    <div class="scroll" style="margin-bottom:28px"><table class="stack"><thead><tr><th>Tutor</th><th>Email</th><th>Languages</th><th>Weekly times</th><th>Meet link</th><th>Volunteer time</th><th>Status</th></tr></thead><tbody>
     ${A.tutors.filter(t => ['active', 'paused'].includes(t.status)).map(t => `<tr>
       <td data-l="Tutor"><b>${esc(t.name)}</b> · ${esc(t.grade)}</td>
       <td data-l="Email">${esc(A.priv[t.id]?.school_email || '')}</td>
       <td data-l="Languages">${esc(t.langs.join(', '))}</td>
       <td data-l="Weekly times">${A.avail.filter(a => a.tutor_id === t.id).length}</td>
       <td data-l="Meet link">${A.priv[t.id]?.meet_link ? 'Yes' : '<span style="color:var(--red)">Missing</span>'}</td>
-      <td data-l="Status"><button class="btn small ${t.status === 'active' ? 'ghost' : 'y'}" data-set="${t.id}|${t.status === 'active' ? 'paused' : 'active'}">${t.status === 'active' ? 'Active · pause' : 'Paused · turn on'}</button></td></tr>`).join('') || '<tr><td colspan="6">No tutors yet.</td></tr>'}
+      <td data-l="Volunteer time">${fmtHours(M.tutorMins(t.id))}</td>
+      <td data-l="Status"><div class="row"><button class="btn small ${t.status === 'active' ? 'ghost' : 'y'}" data-set="${t.id}|${t.status === 'active' ? 'paused' : 'active'}">${t.status === 'active' ? 'Active · pause' : 'Paused · turn on'}</button><button class="linkish danger" data-remove="tutors|${t.id}|${esc(t.name)}">Remove</button></div></td></tr>`).join('') || '<tr><td colspan="7">No tutors yet.</td></tr>'}
     </tbody></table></div>
 
     <h2 style="margin-bottom:6px">Club admins</h2>
@@ -82,9 +110,21 @@ function render() {
       <td data-l="Child">${esc(r.child_first)} (${esc(r.grade)})</td>
       <td data-l="Subject">${esc(r.subject)}</td>
       <td data-l="Parent">${esc(r.parent_name)}</td>
-      <td data-l="Status"><span class="status ${r.status}">${statusLabel[r.status]}</span></td>
-      <td data-l="">${['pending', 'approved'].includes(r.status) && r.session_date >= today() ? `<button class="btn no small" data-cancel="${r.id}">Cancel</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7">No sessions yet.</td></tr>'}
+      <td data-l="Status"><span class="status ${r.completed_at ? (r.attended ? 'approved' : 'declined') : r.status === 'approved' && isPast(r.session_date, r.slot) ? 'log' : r.status}">${sessionLabel(r) || (r.status === 'approved' && isPast(r.session_date, r.slot) ? 'Not logged yet' : statusLabel[r.status])}</span></td>
+      <td data-l="">${['pending', 'approved'].includes(r.status) && !r.completed_at && !isPast(r.session_date, r.slot) ? `<button class="btn no small" data-cancel="${r.id}">Cancel</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7">No sessions yet.</td></tr>'}
     </tbody></table></div>
+
+    <h2 style="margin:28px 0 12px">Families</h2>
+    <div class="scroll"><table class="stack"><thead><tr><th>Parent</th><th>City</th><th>Language</th><th>Status</th><th></th></tr></thead><tbody>
+    ${A.families.filter(f => f.status !== 'pending').map(f => `<tr><td data-l="Parent"><b>${esc(f.parent_name)}</b></td><td data-l="City">${esc(f.city)}</td><td data-l="Language">${esc(f.home_lang)}</td>
+      <td data-l="Status"><span class="status ${f.status}">${f.status === 'approved' ? 'Approved' : 'Declined'}</span></td>
+      <td data-l=""><button class="linkish danger" data-remove="families|${f.id}|${esc(f.parent_name)}">Remove</button></td></tr>`).join('') || '<tr><td colspan="5">No families yet.</td></tr>'}
+    </tbody></table></div>
+
+    <div class="card danger-zone">
+      <h2>Start fresh after testing</h2>
+      <p class="meta" style="margin:6px 0 14px">Use <b>Reset</b> on any counter above to start counting from today (records stay). To erase test data completely, delete every session and homework photo here. Remove test tutors and families with their <b>Remove</b> links.</p>
+      <button class="btn no" id="wipe">Delete all sessions and photos…</button></div>
   </div></section>`;
 }
 
@@ -98,7 +138,42 @@ document.addEventListener('submit', async e => {
   toast(`${email} is now an admin. They sign in at thestudyhub.us/admin.html.`); await load(); render();
 });
 
+function confirmBox(title, body, yes, onYes, typeWord) {
+  openModal(`<div class="panel"><div class="ph"><h2>${title}</h2><button class="x" data-close aria-label="Close">✕</button></div>${body}
+    ${typeWord ? `<div class="f" style="margin-top:14px"><label for="cf-word">Type <b>${typeWord}</b> to confirm</label><input type="text" id="cf-word" autocomplete="off"></div>` : ''}
+    <div class="row" style="margin-top:16px"><button class="btn no" id="cf-yes" ${typeWord ? 'disabled' : ''}>${yes}</button><button class="btn ghost" data-close>Cancel</button></div></div>`);
+  $('#cf-word')?.addEventListener('input', e => { $('#cf-yes').disabled = e.target.value.trim().toUpperCase() !== typeWord; });
+  $('#cf-yes').addEventListener('click', async () => { $('#cf-yes').disabled = true; await onYes(); closeModal(); await load(); render(); });
+}
+const LABELS = { hours: 'help hours', sessions: 'completed sessions', requests: 'requests', families: 'new families' };
+
 document.addEventListener('click', async e => {
+  const rs = e.target.closest('[data-reset]');
+  if (rs) return confirmBox(`Reset ${LABELS[rs.dataset.reset]}?`, `<p>This counter starts again from zero today. Session records and history are not deleted.</p>`, 'Reset to zero', async () => {
+    const { error } = await sb.rpc('reset_metric', { metric: rs.dataset.reset });
+    toast(error ? error.message : 'Counter reset.');
+  });
+  const rm = e.target.closest('[data-remove]');
+  if (rm) {
+    const [table, id, name] = rm.dataset.remove.split('|');
+    return confirmBox(`Remove ${esc(name)}?`, table === 'tutors'
+      ? '<p>Removes this tutor, their weekly times and all their sessions and history. Their sign-in email stays, and they could apply again.</p>'
+      : '<p>Removes this family profile. Their sessions stay until you delete them. They would need approval again to book.</p>', 'Remove', async () => {
+      if (table === 'tutors') {
+        const paths = A.all.filter(r => r.tutor_id === id).flatMap(r => r.photo_paths || []);
+        if (paths.length) await sb.storage.from('homework').remove(paths);
+      }
+      const { error } = await sb.from(table).delete().eq('id', id);
+      toast(error ? error.message : 'Removed.');
+    });
+  }
+  if (e.target.id === 'wipe') return confirmBox('Delete all sessions and photos?', `<p>This permanently deletes <b>all ${A.all.length} session requests</b> and their homework photos, and resets every counter to zero. Tutors, families and admins stay. This can't be undone.</p>`, 'Delete everything', async () => {
+    const paths = A.all.flatMap(r => r.photo_paths || []);
+    for (let i = 0; i < paths.length; i += 100) await sb.storage.from('homework').remove(paths.slice(i, i + 100));
+    const { error } = await sb.from('requests').delete().not('id', 'is', null);
+    if (!error) for (const k of Object.keys(LABELS)) await sb.rpc('reset_metric', { metric: k });
+    toast(error ? error.message : 'All test sessions deleted. Counters are at zero.');
+  }, 'DELETE');
   const u = e.target.closest('[data-unadmin]');
   if (u) {
     const email = u.dataset.unadmin;

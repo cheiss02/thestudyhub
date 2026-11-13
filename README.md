@@ -32,9 +32,15 @@ Everyone signs in with their email: a link or a 6-digit code, no password. Kids 
 - **Admins:** only help@thestudyhub.us to start. Admins add or remove other admins on the Club admin page.
 
 ## Database updates to run (in order)
-`supabase/setup.sql` (first time only), then `supabase/migrations/002_admins.sql`, `003_family_approval.sql` and `004_hardening.sql`.
+`supabase/setup.sql` (first time only), then `supabase/migrations/002_admins.sql`, `003_family_approval.sql`, `004_hardening.sql` and `005_session_records.sql`.
 
 If you ever update the Supabase library version in the HTML files, update its `integrity` hash too (the browser refuses a file that doesn't match).
+
+## Session records and hours
+- After a session starts, the tutor taps **Mark as done** (did the child join, how long, what they worked on).
+- Tutors see their **History**: every child they helped, with dates, notes and total volunteer time.
+- Parents see each child's sessions, the tutor's notes and total time.
+- Admins see total help hours, sessions completed and volunteer time per tutor. Each counter has **Reset** (start from zero, records kept). **Delete all sessions and photos** erases test data.
 
 ## Everyday changes
 

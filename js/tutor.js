@@ -5,7 +5,7 @@
    - Approved: requests (approve/decline), weekly schedule, profile
    ===================================================================== */
 
-const T = { user: null, me: null, priv: null, avail: [], reqs: [], tab: 'requests', photos: {} };
+const T = { user: null, me: null, priv: null, avail: [], reqs: [], history: [], tab: 'requests', photos: {} };
 
 async function loadMe() {
   const [t, p] = await Promise.all([
@@ -15,13 +15,18 @@ async function loadMe() {
   T.me = t.data; T.priv = p.data;
 }
 async function loadDashboard() {
-  const from = isoDate(new Date(Date.now() - 7 * 864e5));
-  const [a, r] = await Promise.all([
+  const from = isoDate(new Date(Date.now() - 30 * 864e5));
+  const [a, r, h] = await Promise.all([
     sb.from('availability').select('dow,slot').eq('tutor_id', T.user.id),
     sb.from('requests').select('*').eq('tutor_id', T.user.id).gte('session_date', from).order('session_date').order('slot'),
+    sb.from('requests').select('id,parent_id,parent_name,child_first,grade,subject,session_date,slot,attended,minutes,session_note,completed_at')
+      .eq('tutor_id', T.user.id).not('completed_at', 'is', null).order('session_date', { ascending: false }),
   ]);
   T.avail = a.data || [];
-  T.reqs = r.data || [];
+  // Hide finished sessions older than a week from the Requests list (they live in History).
+  const weekAgo = isoDate(new Date(Date.now() - 7 * 864e5));
+  T.reqs = (r.data || []).filter(q => q.session_date >= weekAgo || (q.status === 'approved' && !q.completed_at));
+  T.history = h.data || [];
   const links = await Promise.all(T.reqs.map(q => photoLinks(q.photo_paths)));
   T.reqs.forEach((q, i) => T.photos[q.id] = links[i]);
 }
@@ -73,13 +78,16 @@ function applyForm() {
 }
 
 /* ---------- dashboard ---------- */
+const needsLog = r => r.status === 'approved' && !r.completed_at && isPast(r.session_date, r.slot);
 function reqCard(r) {
-  const label = { pending: 'Needs review', approved: 'Approved', declined: 'Declined', cancelled: 'Cancelled' }[r.status];
-  const upcoming = r.session_date >= today();
+  const label = sessionLabel(r) || (needsLog(r) ? 'Log this session' : { pending: 'Needs review', approved: 'Approved', declined: 'Declined', cancelled: 'Cancelled' }[r.status]);
+  const upcoming = r.session_date >= today() && !isPast(r.session_date, r.slot);
   return `<article class="card req ${r.status}">
-    <div class="row" style="justify-content:space-between"><h3>${esc(r.child_first)} · ${esc(r.grade)} grade · ${esc(r.subject)}</h3><span class="status ${r.status}">${label}</span></div>
+    <div class="row" style="justify-content:space-between"><h3>${esc(r.child_first)} · ${esc(r.grade)} grade · ${esc(r.subject)}</h3><span class="status ${needsLog(r) ? 'log' : r.completed_at && !r.attended ? 'declined' : r.status}">${label}</span></div>
     <p style="margin-top:6px;font-weight:600">${fmtDate(r.session_date)}, ${fmtTime(r.slot)} · ${esc(r.lang)}</p>
     <p class="meta">Parent: ${esc(r.parent_name)}</p>
+    ${needsLog(r) ? `<div class="log-box"><div><b>How did it go?</b><span>Mark this session as done so it counts toward your volunteer hours.</span></div><button class="btn go" data-done="${r.id}">Mark as done</button></div>` : ''}
+    ${r.completed_at && r.session_note ? `<div class="note"><b>Your notes:</b> ${esc(r.session_note)}</div>` : ''}
     ${r.note ? `<div class="note">${esc(r.note)}</div>` : ''}
     <div class="thumbs">${(T.photos[r.id] || []).map((u, i) => `<button class="th" data-zoom="${esc(u)}" aria-label="Open photo ${i + 1}"><img src="${esc(u)}" alt="Homework photo ${i + 1}"></button>`).join('') || (r.photo_paths.length ? '' : '<span class="meta">Photos were deleted after 30 days.</span>')}</div>
     ${r.status === 'pending' && upcoming ? `<div class="f" style="margin-top:14px"><label for="m-${r.id}">Message to the family (optional)</label>
@@ -121,16 +129,19 @@ function profileForm() {
 
 function dashboard() {
   const pending = T.reqs.filter(r => r.status === 'pending' && r.session_date >= today()).length;
-  const order = { pending: 0, approved: 1, declined: 2, cancelled: 3 };
-  const list = [...T.reqs].sort((a, b) => order[a.status] - order[b.status] || a.session_date.localeCompare(b.session_date) || a.slot.localeCompare(b.slot));
+  const order = r => needsLog(r) ? 0 : r.status === 'pending' ? 1 : r.status === 'approved' && !r.completed_at ? 2 : r.completed_at ? 3 : 4;
+  const list = [...T.reqs].sort((a, b) => order(a) - order(b) || a.session_date.localeCompare(b.session_date) || a.slot.localeCompare(b.slot));
+  const toLog = T.reqs.filter(needsLog).length;
   let body;
   if (T.tab === 'requests') body = list.length ? `<div class="stack1">${list.map(reqCard).join('')}</div>` : '<div class="empty">No requests yet. Families see your open times on the Find a tutor page.</div>';
+  else if (T.tab === 'history') body = historyView();
   else if (T.tab === 'week') body = `<div class="card"><h2>My weekly times</h2><p class="meta" style="margin:6px 0 16px">Tap a time to open or close it. It repeats every week. Closing a time doesn't cancel sessions already booked.</p>${weekEditor()}</div>`;
   else body = profileForm();
   page(`${T.me.status === 'paused' ? '<div class="warn" style="margin-bottom:18px">Your profile is paused by the club, so families can\'t see your times right now.</div>' : ''}
     ${!T.priv?.meet_link ? '<div class="warn" style="margin-bottom:18px">Add your Google Meet link in <b>Profile</b> so you can approve requests.</div>' : ''}
-    <div class="top"><div><h1>Hi, ${esc(T.me.name.split(' ')[0])}</h1><p>${pending ? `${pending} request${pending > 1 ? 's' : ''} waiting for you. Look at the homework photos, then approve or decline within 48 hours.` : "You're all caught up."}</p></div></div>
-    <div class="tabs">${[['requests', `Requests${pending ? ` (${pending})` : ''}`], ['week', 'My week'], ['profile', 'Profile']].map(([k, l]) => `<button class="tab ${T.tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>${body}`);
+    <div class="top"><div><h1>Hi, ${esc(T.me.name.split(' ')[0])}</h1><p>${[pending ? `${pending} request${pending > 1 ? 's' : ''} waiting for you. Look at the homework photos, then approve or decline within 48 hours.` : '', toLog ? `${toLog} finished session${toLog > 1 ? 's' : ''} to mark as done.` : ''].filter(Boolean).join(' ') || "You're all caught up."}</p></div>
+    <div class="stat mini"><b>${fmtHours(T.history.reduce((n, h) => n + (h.minutes || 0), 0))}</b><span>volunteer time logged</span></div></div>
+    <div class="tabs">${[['requests', `Requests${pending + toLog ? ` (${pending + toLog})` : ''}`], ['history', 'History'], ['week', 'My week'], ['profile', 'Profile']].map(([k, l]) => `<button class="tab ${T.tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>${body}`);
   $('#proff')?.addEventListener('submit', saveProfile);
 }
 
@@ -144,10 +155,53 @@ async function saveProfile(e) {
   await loadMe(); toast('Profile saved.'); dashboard();
 }
 
+/* ---------- history: every child this tutor has helped ---------- */
+function historyView() {
+  if (!T.history.length) return '<div class="empty">No finished sessions yet. After each session, tap <b>Mark as done</b> and it shows up here.</div>';
+  const groups = {};
+  for (const h of T.history) (groups[h.parent_id + '|' + h.child_first.toLowerCase()] ||= []).push(h);
+  const total = T.history.reduce((n, h) => n + (h.minutes || 0), 0);
+  const joined = T.history.filter(h => h.attended).length;
+  return `<div class="stats"><div class="stat"><b>${fmtHours(total)}</b><span>volunteer time</span></div>
+      <div class="stat"><b>${joined}</b><span>sessions taught</span></div>
+      <div class="stat"><b>${Object.keys(groups).length}</b><span>kids helped</span></div></div>
+    <div class="stack1">${Object.values(groups).map(list => {
+      const k = list[0], mins = list.reduce((n, h) => n + (h.minutes || 0), 0);
+      return `<article class="card"><div class="row" style="justify-content:space-between"><h3>${esc(k.child_first)} · ${esc(k.grade)} grade</h3><span class="meta">${list.filter(h => h.attended).length} session${list.length > 1 ? 's' : ''} · ${fmtHours(mins)}</span></div>
+        <p class="meta">Parent: ${esc(k.parent_name)}</p>
+        <ul class="hist">${list.map(h => `<li><span class="hd">${fmtDate(h.session_date)}</span><span class="hs ${h.attended ? '' : 'miss'}">${h.attended ? `${h.minutes} min · ${esc(h.subject)}` : "Didn't join"}</span>${h.session_note ? `<span class="hn">${esc(h.session_note)}</span>` : ''}</li>`).join('')}</ul></article>`;
+    }).join('')}</div>`;
+}
+
+function doneModal(id) {
+  const r = T.reqs.find(q => q.id === id);
+  openModal(`<form class="panel" id="donef" novalidate><div class="ph"><div><h2>Mark as done</h2><p class="meta">${esc(r.child_first)} · ${fmtDate(r.session_date)}, ${fmtTime(r.slot)}</p></div><button type="button" class="x" data-close aria-label="Close">✕</button></div>
+    <fieldset class="f seg"><legend>Did ${esc(r.child_first)} join the call?</legend>
+      <label><input type="radio" name="joined" value="1" checked><span>Yes, we met</span></label>
+      <label><input type="radio" name="joined" value="0"><span>No, they didn't join</span></label></fieldset>
+    <div class="f" id="d-mins-wrap"><label for="d-mins">How long was the session?</label>
+      <select id="d-mins">${[15, 20, 30, 45, 60, 75, 90].map(m => `<option value="${m}" ${m === 30 ? 'selected' : ''}>${fmtHours(m)}</option>`).join('')}</select></div>
+    <div class="f"><label for="d-note">What did you work on? (optional)</label><textarea id="d-note" maxlength="600" placeholder="Practiced subtracting with regrouping. Finished 6 of 8 problems."></textarea>
+      <div class="hint">The family can see this note.</div></div>
+    <div id="d-err" class="err" role="alert"></div>
+    <div class="row"><button class="btn go" type="submit">Save</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>`);
+  $$('#donef input[name=joined]').forEach(i => i.addEventListener('change', () => { $('#d-mins-wrap').hidden = $('#donef input[name=joined]:checked').value === '0'; }));
+  $('#donef').addEventListener('submit', async e => {
+    e.preventDefault();
+    const joined = $('#donef input[name=joined]:checked').value === '1';
+    const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true;
+    const { error } = await sb.rpc('complete_session', { req: id, joined, mins: +$('#d-mins').value, note: $('#d-note').value.trim() });
+    if (error) { $('#d-err').textContent = error.message; btn.disabled = false; return; }
+    closeModal(); toast(joined ? 'Logged! It counts toward your volunteer hours.' : 'Logged as a no-show.');
+    await loadDashboard(); dashboard();
+  });
+}
+
 /* ---------- events ---------- */
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-tab],[data-tog],[data-answer],[data-cancel],[data-zoom]');
+  const b = e.target.closest('[data-tab],[data-tog],[data-answer],[data-cancel],[data-zoom],[data-done]');
   if (!b) return;
+  if (b.dataset.done) return doneModal(b.dataset.done);
   if (b.dataset.tab) { T.tab = b.dataset.tab; dashboard(); }
   else if (b.dataset.zoom) lightbox(b.dataset.zoom);
   else if (b.dataset.tog) {

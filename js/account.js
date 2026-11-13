@@ -12,13 +12,18 @@ async function load() {
 }
 
 function render(user) {
-  const upcoming = mine.filter(r => r.session_date >= today() && ['pending', 'approved'].includes(r.status));
-  const past = mine.filter(r => !upcoming.includes(r));
+  const upcoming = mine.filter(r => ['pending', 'approved'].includes(r.status) && !r.completed_at && !isPast(r.session_date, r.slot));
+  const done = mine.filter(r => r.completed_at);
+  const past = mine.filter(r => !upcoming.includes(r) && !done.includes(r));
   const label = { pending: 'Waiting for tutor', approved: 'Approved', declined: 'Declined', cancelled: 'Cancelled' };
+  // Totals per child
+  const kids = {};
+  for (const r of done) { const k = (kids[r.child_first.toLowerCase()] ||= { name: r.child_first, n: 0, mins: 0, tutors: new Set() }); if (r.attended) { k.n++; k.mins += r.minutes || 0; k.tutors.add(r.tutor_name); } }
   const card = r => `<article class="card req ${r.status}">
-    <div class="row" style="justify-content:space-between"><h3>${esc(r.child_first)} · ${esc(r.subject)}</h3><span class="status ${r.status}">${label[r.status]}</span></div>
+    <div class="row" style="justify-content:space-between"><h3>${esc(r.child_first)} · ${esc(r.subject)}</h3><span class="status ${r.completed_at ? (r.attended ? 'approved' : 'declined') : r.status}">${sessionLabel(r) || (r.status === 'approved' && isPast(r.session_date, r.slot) ? 'Session time passed' : label[r.status])}</span></div>
     <p style="margin-top:6px;font-weight:600">${fmtDate(r.session_date)} at ${fmtTime(r.slot)} with ${esc(r.tutor_name)}</p>
     ${r.tutor_note ? `<div class="note"><b>Note from ${esc(r.tutor_name)}:</b> ${esc(r.tutor_note)}</div>` : ''}
+    ${r.session_note ? `<div class="note"><b>What they worked on:</b> ${esc(r.session_note)}</div>` : ''}
     ${r.status === 'approved' && r.meet_link && r.session_date >= today() ? `<div class="row" style="margin-top:12px"><a class="btn go" href="${esc(r.meet_link)}" target="_blank" rel="noopener">Join Google Meet</a><span class="meta">Please stay nearby during the call.</span></div>` : ''}
     ${r.status === 'declined' ? '<p class="meta" style="margin-top:8px">This tutor couldn\'t take this one. <a href="index.html">Pick another time</a>.</p>' : ''}
     ${upcoming.includes(r) ? `<div class="row" style="margin-top:12px"><button class="btn no small" data-cancel="${r.id}">Cancel session</button></div>` : ''}
@@ -27,6 +32,9 @@ function render(user) {
     <div class="top"><div><h1>My requests</h1><p>Signed in as ${esc(user.email)}. We also email you when a tutor answers.</p></div><a class="btn y" href="index.html">Book another session</a></div>
     <h2 style="margin-bottom:12px">Coming up</h2>
     ${upcoming.length ? `<div class="stack1">${upcoming.map(card).join('')}</div>` : '<div class="empty">No upcoming sessions. <a href="index.html">Find a tutor</a>.</div>'}
+    ${done.length ? `<h2 style="margin:28px 0 12px">Session history</h2>
+      <div class="stats">${Object.values(kids).map(k => `<div class="stat"><b>${fmtHours(k.mins)}</b><span>${esc(k.name)}: ${k.n} session${k.n === 1 ? '' : 's'} with ${esc([...k.tutors].join(', ') || 'a tutor')}</span></div>`).join('')}</div>
+      <div class="stack1">${done.map(card).join('')}</div>` : ''}
     ${past.length ? `<h2 style="margin:28px 0 12px">Past and closed</h2><div class="stack1">${past.map(card).join('')}</div>` : ''}
     <div class="card" style="margin-top:32px;max-width:640px"><h3>Your family's information</h3>
       <p class="meta" style="margin:6px 0 12px">Homework photos are deleted automatically 30 days after each session. You can delete everything now.</p>
