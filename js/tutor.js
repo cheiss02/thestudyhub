@@ -36,9 +36,10 @@ function intro() {
     <p class="meta" style="margin:12px 0 20px;font-size:17px">Help elementary students who are still learning English with their homework, once a week or more, on Google Meet. Great for volunteer hours.</p>
     <div class="card" style="margin-bottom:20px"><h3 style="margin-bottom:8px">You're a great fit if you</h3>
       <ul style="margin:0;padding-left:20px"><li>Speak English and another language</li><li>Are a high school student</li><li>Are patient, kind and love to help</li></ul></div>
-    <div class="row"><button class="btn" id="go-in">Sign in to apply or open your dashboard</button></div>
-    <p class="hint">Use your school email.</p></div>`);
-  $('#go-in').addEventListener('click', () => signInModal('Tutors: use your school email.'));
+    <div class="row"><button class="btn" id="go-up">Sign up to tutor</button><button class="btn ghost" id="go-in">I already signed up</button></div>
+    <p class="hint">Use your school email. It takes about 3 minutes.</p></div>`);
+  $('#go-up').addEventListener('click', () => signInModal('tutor', { mode: 'up' }));
+  $('#go-in').addEventListener('click', () => signInModal('tutor', { mode: 'in' }));
 }
 
 /* ---------- application ---------- */

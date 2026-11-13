@@ -46,6 +46,14 @@ function isPast(dateStr, slot) {
   return d < new Date();
 }
 
+/* ---------- motion ---------- */
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Smoothly cross-fade a screen update (browsers that support it), otherwise just update.
+function swap(update) {
+  if (document.startViewTransition && !REDUCED) document.startViewTransition(update);
+  else update();
+}
+
 /* ---------- sign-in ---------- */
 async function currentUser() {
   if (!sb) return null;
@@ -57,32 +65,60 @@ async function amIAdmin() {
   const { data } = await sb.rpc('is_admin');
   return !!data;
 }
-function signInModal(message = 'Sign in to continue.') {
-  const back = location.href.split('#')[0];
-  openModal(`
-    <form class="panel" id="signin" novalidate>
-      <div class="ph"><div><h2>Sign in</h2><p class="meta">${esc(message)}</p></div>
+async function myRole(user) {
+  if (!user) return { admin: false, tutor: null };
+  const [admin, t] = await Promise.all([amIAdmin(), sb.from('tutors').select('status').eq('id', user.id).maybeSingle()]);
+  return { admin, tutor: t.data?.status || null };
+}
+
+// Sign in and sign up use the same email link. "Get started" (sign up) and "Sign in"
+// only change the words and where the person lands afterwards.
+const ROLES = {
+  parent: { up: 'Create a free parent account', in: 'Parent sign-in', msg: 'Use any email. We send your session links there.', upPage: 'index.html', page: 'account.html' },
+  tutor:  { up: 'Sign up to tutor', in: 'Tutor sign-in', msg: 'Use your school email.', upPage: 'tutor.html', page: 'tutor.html' },
+  admin:  { up: 'Club officer sign-in', in: 'Club officer sign-in', msg: 'Use the email the club added as an admin.', upPage: 'admin.html', page: 'admin.html' },
+};
+function signInModal(role, opts = {}) {
+  const mode = opts.mode || 'in';
+  if (!role) {
+    openModal(`<div class="panel">
+      <div class="ph"><div><h2>${mode === 'up' ? 'Get started' : 'Welcome back'}</h2><p class="meta">${mode === 'up' ? 'It\'s free. Who are you?' : 'Who\'s signing in?'}</p></div>
+        <button type="button" class="x" data-close aria-label="Close">✕</button></div>
+      <div class="roles">
+        <button class="role" data-role="parent"><span class="role-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="7" r="3"/><circle cx="17" cy="9" r="2.3"/><path d="M2.5 20c0-3.3 2.5-6 5.5-6s5.5 2.7 5.5 6M13.5 20c.2-2.6 1.6-4.6 3.5-4.6s3.4 2 3.5 4.6"/></svg></span><span><b>I'm a parent or guardian</b><small>${mode === 'up' ? 'Get free homework help for my child' : 'See my requests and Meet links'}</small></span></button>
+        <button class="role" data-role="tutor"><span class="role-ic tutor" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 5.5C6 4 9 4 12 6c3-2 6-2 9-.5V19c-3-1.5-6-1.5-9 .5-3-2-6-2-9-.5z"/><path d="M12 6v13.5"/></svg></span><span><b>I'm a high school student</b><small>${mode === 'up' ? 'Volunteer as a bilingual tutor' : 'Open my tutor dashboard'}</small></span></button>
+      </div>
+      <p class="hint" style="margin-top:16px">${mode === 'up' ? 'Already have an account? <button class="linkish" data-switch="in">Sign in</button>' : 'New here? <button class="linkish" data-switch="up">Get started</button>'} · Club officer? <button class="linkish" data-role="admin">Sign in here</button></p></div>`);
+    $$('#modal [data-role]').forEach(b => b.addEventListener('click', () => signInModal(b.dataset.role, { mode })));
+    $$('#modal [data-switch]').forEach(b => b.addEventListener('click', () => signInModal(null, { mode: b.dataset.switch })));
+    return;
+  }
+  const r = ROLES[role];
+  const dest = opts.stay ? location.href.split('#')[0] : new URL(mode === 'up' ? r.upPage : r.page, location.href).href;
+  openModal(`<form class="panel" id="signin" novalidate>
+      <div class="ph"><div><h2>${mode === 'up' ? r.up : r.in}</h2><p class="meta">${esc(opts.message || r.msg)}</p></div>
         <button type="button" class="x" data-close aria-label="Close">✕</button></div>
       <div class="f"><label for="si-email">Email</label>
-        <input type="email" id="si-email" autocomplete="email" required>
-        <div class="hint">We'll email you a sign-in link. No password needed.</div></div>
+        <input type="email" id="si-email" autocomplete="email" inputmode="email" required>
+        <div class="hint">We'll email you a link to ${mode === 'up' ? 'finish signing up' : 'sign in'}. No password to remember.</div></div>
       <div id="si-err" class="err" role="alert"></div>
-      <div class="row"><button class="btn" type="submit">Email me a link</button>
-        ${C.GOOGLE_LOGIN ? '<button type="button" class="btn ghost" id="si-google">Sign in with Google</button>' : ''}</div>
+      <div class="row"><button class="btn" type="submit">${mode === 'up' ? 'Continue' : 'Email me a sign-in link'}</button>
+        ${C.GOOGLE_LOGIN && role !== 'parent' ? '<button type="button" class="btn ghost" id="si-google">Continue with Google</button>' : ''}
+        ${opts.stay ? '' : '<button type="button" class="linkish" id="si-back">Back</button>'}</div>
     </form>`);
+  $('#si-back')?.addEventListener('click', () => signInModal(null, { mode }));
   $('#signin').addEventListener('submit', async e => {
     e.preventDefault();
     const email = $('#si-email').value.trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) { $('#si-err').textContent = 'Please enter a valid email.'; return; }
-    const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true;
-    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: back } });
-    if (error) { $('#si-err').textContent = error.message; btn.disabled = false; return; }
+    const btn = e.target.querySelector('button[type=submit]'); const label = btn.textContent; btn.disabled = true; btn.textContent = 'Sending…';
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: dest } });
+    if (error) { $('#si-err').textContent = error.message; btn.disabled = false; btn.textContent = label; return; }
     $('#signin').innerHTML = `<div class="ph"><h2>Check your email</h2><button type="button" class="x" data-close aria-label="Close">✕</button></div>
-      <div class="ok">We sent a sign-in link to <b>${esc(email)}</b>. Open it on this device to continue.</div>
-      <p class="meta">Don't see it? Check your spam folder.</p>`;
+      <div class="ok sent"><span class="mail" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/></svg></span><div>We sent a link to <b>${esc(email)}</b>. Open it on this device to ${mode === 'up' ? 'finish signing up' : 'sign in'}.</div></div>
+      <p class="meta">Don't see it in a minute? Check your spam folder.</p>`;
   });
-  $('#si-google')?.addEventListener('click', () =>
-    sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: back } }));
+  $('#si-google')?.addEventListener('click', () => sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: dest } }));
 }
 async function signOut() { await sb.auth.signOut(); location.href = 'index.html'; }
 
@@ -92,32 +128,49 @@ const SPARKS = [['1.5%', '14px', '#f7c948', 16], ['1.5%', '72%', '#2a9d8f', 12],
 
 async function renderChrome(active) {
   const user = await currentUser();
-  const admin = user ? await amIAdmin() : false;
-  const links = [['index.html', 'find', 'Find a tutor'], ['account.html', 'account', 'My requests'],
-    ['tutor.html', 'tutor', 'For tutors'], ...(admin ? [['admin.html', 'admin', 'Club admin']] : []),
-    ['rules.html', 'rules', 'Rules & privacy']];
+  const role = await myRole(user);
+  // Signed out: only what a visitor needs. Signed in: their own pages.
+  const links = [['index.html', 'find', 'Find a tutor']];
+  if (user) links.push(['account.html', 'account', 'My requests']);
+  links.push(['tutor.html', 'tutor', role.tutor && role.tutor !== 'declined' ? 'Tutor dashboard' : 'Become a tutor']);
+  if (role.admin) links.push(['admin.html', 'admin', 'Club admin']);
+  links.push(['rules.html', 'rules', 'Rules & privacy']);
+  const acct = !READY ? '' : user
+    ? `<span class="me" title="${esc(user.email)}"><span class="me-av" aria-hidden="true">${esc(user.email[0].toUpperCase())}</span><span class="me-mail">${esc(user.email)}</span></span><button class="nav-btn" id="nav-out">Sign out</button>`
+    : '<button class="nav-btn" id="nav-in">Sign in</button><button class="nav-btn primary" id="nav-up">Get started</button>';
   $('#site-header').innerHTML = `${SPARKS}<div class="wrap">
-    <a class="brand" href="index.html"><img src="images/logo.svg" alt=""><div><b>The Study Hub</b><span>Bilingual high school volunteers for elementary students</span></div></a>
-    <nav>${links.map(([h, k, t]) => `<a href="${h}" class="${k === active ? 'on' : ''}">${t}</a>`).join('')}
-    ${!READY ? '' : user ? '<button id="nav-out" title="' + esc(user.email) + '">Sign out</button>' : '<button id="nav-in">Sign in</button>'}</nav></div>`;
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="58" height="58"><div><b>The Study Hub</b><span>Bilingual high school volunteers for elementary students</span></div></a>
+    <button class="menu-btn" aria-expanded="false" aria-controls="site-nav"><span class="bars" aria-hidden="true"></span>Menu</button>
+    <nav id="site-nav" aria-label="Main">${links.map(([h, k, t]) => `<a href="${h}" ${k === active ? 'class="on" aria-current="page"' : ''}>${t}</a>`).join('')}<span class="acct">${acct}</span></nav></div>`;
+  const mb = $('.menu-btn');
+  mb.addEventListener('click', () => { const open = $('#site-nav').classList.toggle('open'); mb.setAttribute('aria-expanded', open); });
   $('#nav-out')?.addEventListener('click', signOut);
-  $('#nav-in')?.addEventListener('click', () => signInModal('Parents, tutors and club officers all sign in here.'));
+  $('#nav-in')?.addEventListener('click', () => signInModal(null, { mode: 'in' }));
+  $('#nav-up')?.addEventListener('click', () => signInModal(null, { mode: 'up' }));
+  $$('[data-start]').forEach(b => b.addEventListener('click', () => signInModal(b.dataset.start, { mode: 'up' })));
   $('#site-footer').innerHTML = `<div class="wrap"><span>The Study Hub · a student club · always free · <a href="mailto:${C.CLUB_EMAIL}">${C.CLUB_EMAIL}</a></span>
     <span><a href="${C.INSTAGRAM}">Instagram</a> · <a href="rules.html">Terms, privacy and safety</a></span></div>`;
   if (!READY) $('#site-header').insertAdjacentHTML('afterend', '<div class="notice">Setup in progress: this site isn\'t connected to its database yet.</div>');
-  return { user, admin };
+  return { user, admin: role.admin, tutorStatus: role.tutor };
 }
 
 /* ---------- pop-ups ---------- */
 function openModal(html) {
-  closeModal();
+  closeModal(true);
   const ov = document.createElement('div');
-  ov.className = 'ov'; ov.id = 'modal'; ov.innerHTML = html;
+  ov.className = 'ov'; ov.id = 'modal'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+  ov.innerHTML = html;
   ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-close]')) closeModal(); });
   document.body.append(ov); document.body.style.overflow = 'hidden';
-  ov.querySelector('input,select,textarea')?.focus();
+  setTimeout(() => ov.querySelector('input:not([type=checkbox]),select,textarea,button.role')?.focus(), 60);
 }
-function closeModal() { $('#modal')?.remove(); document.body.style.overflow = ''; }
+function closeModal(instant) {
+  const ov = $('#modal'); if (!ov) return;
+  document.body.style.overflow = '';
+  if (instant || REDUCED) { ov.remove(); return; }
+  ov.id = ''; ov.classList.add('out');
+  setTimeout(() => ov.remove(), 180);
+}
 function lightbox(src) {
   const el = document.createElement('div');
   el.className = 'light'; el.innerHTML = `<button class="x" aria-label="Close">✕</button><img src="${src}" alt="Homework photo">`;
@@ -125,9 +178,13 @@ function lightbox(src) {
   document.body.append(el);
 }
 function toast(msg) {
+  $('.toast')?.remove();
   const t = document.createElement('div'); t.className = 'toast'; t.role = 'status'; t.textContent = msg;
-  document.body.append(t); setTimeout(() => t.remove(), 3200);
+  document.body.append(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 250); }, 3200);
 }
+// Grey placeholder cards while data loads.
+const skeleton = (n = 2) => `<div class="grid2">${'<div class="card sk"><div class="sk-row"><span class="sk-c"></span><span class="sk-l" style="width:40%"></span></div><span class="sk-l"></span><span class="sk-l" style="width:70%"></span><span class="sk-b"></span></div>'.repeat(n)}</div>`;
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); $('.light')?.remove(); } });
 
 /* ---------- homework photos ---------- */

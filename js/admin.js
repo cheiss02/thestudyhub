@@ -87,7 +87,7 @@ document.addEventListener('click', async e => {
   const { user, admin } = await renderChrome('admin');
   const msg = h => { $('#main').innerHTML = `<section class="band"><div class="wrap">${h}</div></section>`; };
   if (!READY) return msg('<div class="empty">Coming soon.</div>');
-  if (!user) { msg('<h1>Club admin</h1><p class="meta" style="margin:10px 0 18px">For club officers and the advisor.</p><button class="btn" id="go-in">Sign in</button>'); $('#go-in').addEventListener('click', () => signInModal('Club officers only.')); return; }
+  if (!user) { msg('<h1>Club admin</h1><p class="meta" style="margin:10px 0 18px">For club officers and the advisor.</p><button class="btn" id="go-in">Sign in</button>'); $('#go-in').addEventListener('click', () => signInModal('admin')); return; }
   if (!admin) return msg(`<h1>Club admin</h1><p class="meta" style="margin-top:10px">This page is only for club officers. Ask the club to add ${esc(user.email)} as an admin.</p>`);
   await load(); render();
 })();

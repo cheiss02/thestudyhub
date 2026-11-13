@@ -63,11 +63,14 @@ document.addEventListener('click', e => {
 (async function start() {
   const { user } = await renderChrome('account');
   if (!READY) { $('#main').innerHTML = '<section class="band"><div class="wrap"><div class="empty">Coming soon.</div></div></section>'; return; }
+  if (user) $('#main').innerHTML = `<section class="band"><div class="wrap">${skeleton(1)}</div></section>`;
   if (!user) {
-    $('#main').innerHTML = `<section class="band"><div class="wrap"><h1>My requests</h1>
-      <p class="meta" style="margin:10px 0 18px">Sign in with the email you used to book.</p>
-      <button class="btn" id="go-in">Sign in</button></div></section>`;
-    $('#go-in').addEventListener('click', () => signInModal('Use the email you booked with.'));
+    $('#main').innerHTML = `<section class="band"><div class="wrap"><div class="card intro-card">
+      <h1>My requests</h1>
+      <p style="margin:10px 0 6px">This is where parents see the sessions they've requested, get the Google Meet link once a tutor approves, and cancel if plans change.</p>
+      <p class="meta" style="margin-bottom:20px">No account needed to browse tutors. You only sign in when you send a request.</p>
+      <div class="row"><button class="btn" id="go-in">Sign in with my email</button><a class="btn ghost" href="index.html">Find a tutor</a></div></div></div></section>`;
+    $('#go-in').addEventListener('click', () => signInModal('parent'));
     return;
   }
   await load(); render(user);

@@ -3,19 +3,124 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Find a free tutor · The Study Hub</title>
-  <meta name="description" content="Free homework help for elementary students from bilingual high school volunteers.">
+  <title>Free Bilingual Homework Help for Kids | The Study Hub</title>
+  <meta name="description" content="Free online homework help for elementary students learning English. Bilingual high school volunteers tutor in Spanish, Mandarin, Korean, Vietnamese, Arabic and more over Google Meet.">
+  <link rel="canonical" href="https://thestudyhub.us/">
+  <meta name="theme-color" content="#fdf4e1">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="The Study Hub">
+  <meta property="og:title" content="Free bilingual homework help for elementary kids">
+  <meta property="og:description" content="High school volunteers who speak English and another language help young English learners with homework, free, on Google Meet.">
+  <meta property="og:url" content="https://thestudyhub.us/">
+  <meta property="og:image" content="https://thestudyhub.us/images/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="The Study Hub: Struggling with homework? We're here to help. 100% free.">
+  <meta name="twitter:card" content="summary_large_image">
+
   <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+  <link rel="icon" href="images/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "EducationalOrganization",
+        "@id": "https://thestudyhub.us/#org",
+        "name": "The Study Hub",
+        "url": "https://thestudyhub.us/",
+        "logo": "https://thestudyhub.us/images/apple-touch-icon.png",
+        "description": "A high school student club where bilingual volunteers give free online homework help to elementary students who are learning English.",
+        "email": "help@thestudyhub.us",
+        "areaServed": "Orange County, California",
+        "knowsLanguage": ["en", "es", "zh", "ko", "vi", "ar", "tl"],
+        "sameAs": ["https://www.instagram.com/the_studyhub1/"]
+      },
+      {
+        "@type": "Service",
+        "name": "Free bilingual homework help",
+        "provider": { "@id": "https://thestudyhub.us/#org" },
+        "serviceType": "Online tutoring",
+        "audience": { "@type": "EducationalAudience", "educationalRole": "student", "audienceType": "Elementary school English learners" },
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Is The Study Hub really free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Every session is free. Tutors are student volunteers and we never ask for payment information." } },
+          { "@type": "Question", "name": "Who are the tutors?", "acceptedAnswer": { "@type": "Answer", "text": "High school students who speak English and at least one other language. A club officer approves every tutor, and tutors follow a code of conduct." } },
+          { "@type": "Question", "name": "What does my child need?", "acceptedAnswer": { "@type": "Answer", "text": "A device with a camera and internet, Google Meet, and the homework. A parent or guardian books the session and stays nearby during the call." } },
+          { "@type": "Question", "name": "Which languages do tutors speak?", "acceptedAnswer": { "@type": "Answer", "text": "Spanish, Mandarin, Korean, Vietnamese, Arabic, Tagalog and more, depending on which volunteers are available each week." } },
+          { "@type": "Question", "name": "What happens to the homework photos?", "acceptedAnswer": { "@type": "Answer", "text": "Only the tutor you chose and club officers can see them, and they are deleted automatically 30 days after the session." } }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body data-page="find">
-  <header id="site-header" class="site-header band"></header>
-  <main id="main"><section class="band"><div class="wrap"><p class="meta">Loading…</p></div></section></main>
-  <footer id="site-footer" class="band" style="padding-block:20px"></footer>
+  <a class="skip" href="#main">Skip to content</a>
+  <header id="site-header" class="site-header band">
+    <div class="wrap"><a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="58" height="58"><div><b>The Study Hub</b><span>Bilingual high school volunteers for elementary students</span></div></a></div>
+  </header>
 
-  <!-- Supabase library, then our files -->
+  <main id="main">
+    <section class="band hero">
+      <div class="wrap top">
+        <div>
+          <span class="free">100% FREE</span>
+          <h1>Struggling with homework?<span class="help">We're here to help.</span></h1>
+          <p>Bilingual high school volunteers help elementary students who are learning English, over Google Meet. Pick your child's language, then tap a yellow time to send a request with photos of the homework.</p>
+        </div>
+      </div>
+      <div class="wrap start">
+        <a class="start-card parent" href="#schedule"><b>I'm a parent</b><span>Find a tutor below and pick a time. Free, no account needed to look.</span><em>See tutors ↓</em></a>
+        <a class="start-card student" href="tutor.html"><b>I'm a high school student</b><span>Speak two languages? Volunteer and help a kid with homework.</span><em>Become a tutor →</em></a>
+      </div>
+    </section>
+
+    <section class="band" style="padding-top:0" aria-labelledby="sched-h">
+      <div class="wrap">
+        <h2 id="sched-h" class="sr-only">Tutor schedules</h2>
+        <div id="schedule"></div>
+      </div>
+    </section>
+
+    <section class="band steps-band" aria-labelledby="how-h">
+      <div class="wrap">
+        <h2 id="how-h">How it works</h2>
+        <ol class="steps">
+          <li><b>Pick a time</b><span>Choose a tutor who speaks your family's language and tap an open yellow time.</span></li>
+          <li><b>Send the homework</b><span>Add photos of the worksheet so the tutor can prepare. No account needed until you send.</span></li>
+          <li><b>Get the Meet link</b><span>When the tutor approves, we email you the Google Meet link. Join from any device.</span></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="faq-h">
+      <div class="wrap faq">
+        <h2 id="faq-h">Questions parents ask</h2>
+        <details><summary>Is it really free?</summary><p>Yes. Every session is free. Tutors are student volunteers and we never ask for payment information.</p></details>
+        <details><summary>Who are the tutors?</summary><p>High school students who speak English and at least one other language. A club officer approves every tutor, and tutors follow our <a href="rules.html#conduct">code of conduct</a>.</p></details>
+        <details><summary>What does my child need?</summary><p>A phone, tablet or computer with a camera, Google Meet, and the homework. A parent or guardian books the session and stays nearby during the call.</p></details>
+        <details><summary>Which languages do tutors speak?</summary><p>Spanish, Mandarin, Korean, Vietnamese, Arabic, Tagalog and more, depending on which volunteers are available each week.</p></details>
+        <details><summary>What happens to the homework photos?</summary><p>Only the tutor you chose and club officers can see them, and they're deleted automatically 30 days after the session. Read our <a href="rules.html#privacy">privacy policy</a>.</p></details>
+      </div>
+    </section>
+  </main>
+
+  <footer id="site-footer" class="band" style="padding-block:20px">
+    <div class="wrap"><span>The Study Hub · a student club · always free · <a href="mailto:help@thestudyhub.us">help@thestudyhub.us</a></span></div>
+  </footer>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/app.js"></script>

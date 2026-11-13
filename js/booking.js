@@ -41,19 +41,16 @@ function render() {
   const langs = ['All', ...C.LANGUAGES.filter(l => state.tutors.some(t => t.langs.includes(l)))];
   const list = state.tutors.filter(t => state.lang === 'All' || t.langs.includes(state.lang));
   const weeks = [...Array(C.WEEKS_AHEAD).keys()];
-  $('#main').innerHTML = `<section class="band"><div class="wrap">
-    <div class="top"><div><span class="free">100% FREE</span>
-      <h1>Struggling with homework?<span class="help">Book a free tutor.</span></h1>
-      <p>Bilingual high school volunteers help elementary students over Google Meet. Choose your child's language, then tap a yellow time to send a request with photos of the homework.</p></div>
-      <a class="btn y" href="tutor.html">Become a tutor</a></div>
-    <div class="chips" role="group" aria-label="Week">${weeks.map(w => `<button class="chip ${state.week === w ? 'on' : ''}" data-week="${w}">${w === 0 ? 'This week' : w === 1 ? 'Next week' : `Week of ${weekDays(w)[0].label}`}</button>`).join('')}</div>
-    <div class="chips" role="group" aria-label="Language">${langs.map(l => `<button class="chip ${state.lang === l ? 'on' : ''}" data-lang="${esc(l)}">${esc(l)}</button>`).join('')}</div>
-    <div class="grid2">${list.map(t => `<article class="card">
+  $('#schedule').innerHTML = `
+    <div class="filters">
+      <div class="chips" role="group" aria-label="Week">${weeks.map(w => `<button class="chip ${state.week === w ? 'on' : ''}" aria-pressed="${state.week === w}" data-week="${w}">${w === 0 ? 'This week' : w === 1 ? 'Next week' : `Week of ${weekDays(w)[0].label}`}</button>`).join('')}</div>
+      <div class="chips" role="group" aria-label="Language">${langs.map(l => `<button class="chip ${state.lang === l ? 'on' : ''}" aria-pressed="${state.lang === l}" data-lang="${esc(l)}">${esc(l)}</button>`).join('')}</div>
+    </div>
+    <div class="grid2 enter">${list.map((t, i) => `<article class="card tutor-card" style="--i:${i}">
       <div class="who"><div class="av">${initials(t.name)}</div><div><h3>${esc(t.name)}</h3><div class="meta">${esc(t.grade)} grade tutor</div></div></div>
       ${t.bio ? `<p style="font-size:15px">${esc(t.bio)}</p>` : ''}
       <div class="tags">${t.langs.map(l => `<span class="tag lang">${esc(l)}</span>`).join('')}${t.subjects.map(s => `<span class="tag">${esc(s)}</span>`).join('')}</div>
-      ${weekGrid(t)}</article>`).join('') || `<div class="empty">${state.tutors.length ? 'No tutors for this language yet. Check back soon!' : 'Tutors are getting set up. Check back soon!'}</div>`}</div>
-  </div></section>`;
+      ${weekGrid(t)}</article>`).join('') || `<div class="empty">${state.tutors.length ? 'No tutors for this language yet. Check back soon!' : 'Our first tutors are getting set up. Check back soon, or follow us on <a href="' + C.INSTAGRAM + '">Instagram</a> for updates!'}</div>`}</div>`;
 }
 
 /* ---------- request form ---------- */
@@ -150,19 +147,20 @@ async function submitRequest(e) {
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-book],[data-lang],[data-week],[data-rm]');
   if (!b) return;
-  if (b.dataset.lang) { state.lang = b.dataset.lang; render(); }
-  else if (b.dataset.week) { state.week = +b.dataset.week; render(); }
+  if (b.dataset.lang) { state.lang = b.dataset.lang; swap(render); }
+  else if (b.dataset.week) { state.week = +b.dataset.week; swap(render); }
   else if (b.dataset.rm) { state.draft.photos.splice(+b.dataset.rm, 1); drawThumbs(); }
   else if (b.dataset.book) {
     const [tid, date, slot] = b.dataset.book.split('|');
     if (state.user) return openForm(tid, date, slot);
     try { sessionStorage.setItem(PENDING_KEY, b.dataset.book); } catch (err) {}
-    signInModal('Enter your email to request this time. We use it to send you the Meet link.');
+    signInModal('parent', { stay: true, message: 'Enter your email to request this time. We send the Meet link there.' });
   }
 });
 
 /* ---------- start ---------- */
 (async function start() {
+  $('#schedule').innerHTML = skeleton(2);
   ({ user: state.user } = await renderChrome('find'));
   if (!READY) { render(); return; }
   await loadSchedule(); render();
