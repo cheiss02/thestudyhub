@@ -66,29 +66,40 @@ async function amIAdmin() {
   return !!data;
 }
 async function myRole(user) {
-  if (!user) return { admin: false, tutor: null };
-  const [admin, t] = await Promise.all([amIAdmin(), sb.from('tutors').select('status').eq('id', user.id).maybeSingle()]);
-  return { admin, tutor: t.data?.status || null };
+  if (!user) return { admin: false, tutor: null, family: null };
+  const [admin, t, f] = await Promise.all([amIAdmin(),
+    sb.from('tutors').select('status').eq('id', user.id).maybeSingle(),
+    sb.from('families').select('*').eq('id', user.id).maybeSingle()]);
+  return { admin, tutor: t.data?.status || null, family: f.data || null };
 }
 
 // Sign in and sign up use the same email link. "Get started" (sign up) and "Sign in"
 // only change the words and where the person lands afterwards.
 const ROLES = {
-  parent: { up: 'Create a free parent account', in: 'Parent sign-in', msg: 'Use any email. We send your session links there.', upPage: 'index.html', page: 'account.html' },
+  parent: { up: 'Create a free parent account', in: 'Parent sign-in', msg: 'Use any email. We send your session links there.', upPage: 'account.html', page: 'account.html' },
   tutor:  { up: 'Sign up to tutor', in: 'Tutor sign-in', msg: 'Use your school email.', upPage: 'tutor.html', page: 'tutor.html' },
   admin:  { up: 'Club officer sign-in', in: 'Club officer sign-in', msg: 'Use the email the club added as an admin.', upPage: 'admin.html', page: 'admin.html' },
 };
+// Remember the last email used on this device so returning people sign in in one tap.
+const LAST_KEY = 'studyhub-last-signin';
+function lastSignIn() { try { return JSON.parse(localStorage.getItem(LAST_KEY) || 'null'); } catch (e) { return null; } }
+function rememberSignIn(email, role) { try { localStorage.setItem(LAST_KEY, JSON.stringify({ email, role })); } catch (e) {} }
+
 function signInModal(role, opts = {}) {
   const mode = opts.mode || 'in';
+  const last = lastSignIn();
   if (!role) {
     openModal(`<div class="panel">
       <div class="ph"><div><h2>${mode === 'up' ? 'Get started' : 'Welcome back'}</h2><p class="meta">${mode === 'up' ? 'It\'s free. Who are you?' : 'Who\'s signing in?'}</p></div>
         <button type="button" class="x" data-close aria-label="Close">✕</button></div>
+      ${mode === 'in' && last ? `<button class="role again" id="si-again"><span class="me-av" aria-hidden="true">${esc(last.email[0].toUpperCase())}</span><span><b>Continue as ${esc(last.email)}</b><small>We'll email you a sign-in code</small></span></button>
+        <p class="or">or choose</p>` : ''}
       <div class="roles">
         <button class="role" data-role="parent"><span class="role-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="7" r="3"/><circle cx="17" cy="9" r="2.3"/><path d="M2.5 20c0-3.3 2.5-6 5.5-6s5.5 2.7 5.5 6M13.5 20c.2-2.6 1.6-4.6 3.5-4.6s3.4 2 3.5 4.6"/></svg></span><span><b>I'm a parent or guardian</b><small>${mode === 'up' ? 'Get free homework help for my child' : 'See my requests and Meet links'}</small></span></button>
         <button class="role" data-role="tutor"><span class="role-ic tutor" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 5.5C6 4 9 4 12 6c3-2 6-2 9-.5V19c-3-1.5-6-1.5-9 .5-3-2-6-2-9-.5z"/><path d="M12 6v13.5"/></svg></span><span><b>I'm a high school student</b><small>${mode === 'up' ? 'Volunteer as a bilingual tutor' : 'Open my tutor dashboard'}</small></span></button>
       </div>
-      <p class="hint" style="margin-top:16px">${mode === 'up' ? 'Already have an account? <button class="linkish" data-switch="in">Sign in</button>' : 'New here? <button class="linkish" data-switch="up">Get started</button>'} · Club officer? <button class="linkish" data-role="admin">Sign in here</button></p></div>`);
+      <p class="hint" style="margin-top:16px">${mode === 'up' ? 'Already have an account? <button class="linkish" data-switch="in">Sign in</button>' : 'New here? <button class="linkish" data-switch="up">Get started</button>'}</p></div>`);
+    $('#si-again')?.addEventListener('click', () => quickSignIn(last));
     $$('#modal [data-role]').forEach(b => b.addEventListener('click', () => signInModal(b.dataset.role, { mode })));
     $$('#modal [data-switch]').forEach(b => b.addEventListener('click', () => signInModal(null, { mode: b.dataset.switch })));
     return;
@@ -99,7 +110,7 @@ function signInModal(role, opts = {}) {
       <div class="ph"><div><h2>${mode === 'up' ? r.up : r.in}</h2><p class="meta">${esc(opts.message || r.msg)}</p></div>
         <button type="button" class="x" data-close aria-label="Close">✕</button></div>
       <div class="f"><label for="si-email">Email</label>
-        <input type="email" id="si-email" autocomplete="email" inputmode="email" required>
+        <input type="email" id="si-email" autocomplete="email" inputmode="email" required value="${esc(opts.email || (last && last.role === role ? last.email : ''))}">
         <div class="hint">We'll email you a link to ${mode === 'up' ? 'finish signing up' : 'sign in'}. No password to remember.</div></div>
       <div id="si-err" class="err" role="alert"></div>
       <div class="row"><button class="btn" type="submit">${mode === 'up' ? 'Continue' : 'Email me a sign-in link'}</button>
@@ -113,8 +124,19 @@ function signInModal(role, opts = {}) {
     const email = $('#si-email').value.trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) { $('#si-err').textContent = 'Please enter a valid email.'; return; }
     const btn = e.target.querySelector('button[type=submit]'); const label = btn.textContent; btn.disabled = true; btn.textContent = 'Sending…';
-    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: dest } });
-    if (error) { $('#si-err').textContent = error.message; btn.disabled = false; btn.textContent = label; return; }
+    // Sign in only works for existing accounts; Get started creates one (or signs in if it already exists).
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: dest, shouldCreateUser: mode === 'up' && role !== 'admin' } });
+    btn.disabled = false; btn.textContent = label;
+    if (error) {
+      if (/signups? not allowed|user not found|otp_disabled/i.test(error.message + (error.code || ''))) {
+        $('#si-err').innerHTML = role === 'admin'
+          ? 'That email isn\'t a club admin. Ask a club admin to add you.'
+          : `We don't have an account for <b>${esc(email)}</b> yet. <button type="button" class="linkish" id="si-create">Create my free account</button>`;
+        $('#si-create')?.addEventListener('click', () => signInModal(role, { ...opts, mode: 'up', email }));
+      } else $('#si-err').textContent = error.message;
+      return;
+    }
+    rememberSignIn(email, role);
     showCodeStep(email, dest, mode);
   });
   $('#si-google')?.addEventListener('click', () => sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: dest } }));
@@ -143,13 +165,33 @@ function showCodeStep(email, dest, mode) {
     const token = input.value.trim();
     if (token.length < 6) { $('#si-err').textContent = 'Enter the code from the email.'; return; }
     const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true; btn.textContent = 'Checking…';
-    const { error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
+    const { data, error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
     if (error) {
       $('#si-err').textContent = /expired|invalid/i.test(error.message) ? 'That code didn\'t work or has expired. Check the newest email, or send a new one.' : error.message;
       btn.disabled = false; btn.textContent = 'Sign in'; return;
     }
+    const isNew = data?.user && Date.now() - new Date(data.user.created_at).getTime() < 10 * 60 * 1000;
+    try { sessionStorage.setItem('studyhub-welcome', mode === 'up' && !isNew ? 'back' : isNew ? 'new' : 'in'); } catch (err) {}
     location.href = dest;
   };
+}
+
+// One tap for returning people: send the code to the email used last time.
+async function quickSignIn(last) {
+  const r = ROLES[last.role] || ROLES.parent;
+  const dest = new URL(r.page, location.href).href;
+  openModal(`<form class="panel" id="signin" novalidate><p class="meta">Sending your code…</p></form>`);
+  const { error } = await sb.auth.signInWithOtp({ email: last.email, options: { emailRedirectTo: dest, shouldCreateUser: false } });
+  if (error) { signInModal(last.role, { mode: 'in', email: last.email }); setTimeout(() => { $('#si-err') && ($('#si-err').textContent = error.message); }, 50); return; }
+  showCodeStep(last.email, dest, 'in');
+}
+
+// After signing in: a friendly note (shown once).
+function welcomeNote() {
+  let w = null; try { w = sessionStorage.getItem('studyhub-welcome'); sessionStorage.removeItem('studyhub-welcome'); } catch (e) {}
+  if (w === 'back') toast('Welcome back! You already had an account, so we signed you in.');
+  else if (w === 'new') toast('Your free account is ready!');
+  else if (w === 'in') toast('Signed in. Welcome back!');
 }
 
 async function signOut() { await sb.auth.signOut(); location.href = 'index.html'; }
@@ -172,18 +214,54 @@ async function renderChrome(active) {
     : '<button class="nav-btn" id="nav-in">Sign in</button><button class="nav-btn primary" id="nav-up">Get started</button>';
   $('#site-header').innerHTML = `${SPARKS}<div class="wrap">
     <a class="brand" href="index.html"><img src="images/logo.svg" alt="" width="58" height="58"><div><b>The Study Hub</b><span>Bilingual high school volunteers for elementary students</span></div></a>
-    <button class="menu-btn" aria-expanded="false" aria-controls="site-nav"><span class="bars" aria-hidden="true"></span>Menu</button>
+    ${READY && !user ? '<button class="quick-in" id="quick-in">Sign in</button>' : ''}
+    <button class="menu-btn" aria-expanded="false" aria-controls="site-nav"><span class="bars" aria-hidden="true"></span><span class="menu-txt">Menu</span></button>
     <nav id="site-nav" aria-label="Main">${links.map(([h, k, t]) => `<a href="${h}" ${k === active ? 'class="on" aria-current="page"' : ''}>${t}</a>`).join('')}<span class="acct">${acct}</span></nav></div>`;
   const mb = $('.menu-btn');
   mb.addEventListener('click', () => { const open = $('#site-nav').classList.toggle('open'); mb.setAttribute('aria-expanded', open); });
   $('#nav-out')?.addEventListener('click', signOut);
   $('#nav-in')?.addEventListener('click', () => signInModal(null, { mode: 'in' }));
+  $('#quick-in')?.addEventListener('click', () => signInModal(null, { mode: 'in' }));
+  $$('[data-signin]').forEach(b => b.addEventListener('click', e => { e.preventDefault(); signInModal(null, { mode: 'in' }); }));
+  if (user) welcomeNote();
   $('#nav-up')?.addEventListener('click', () => signInModal(null, { mode: 'up' }));
   $$('[data-start]').forEach(b => b.addEventListener('click', () => signInModal(b.dataset.start, { mode: 'up' })));
   $('#site-footer').innerHTML = `<div class="wrap"><span>The Study Hub · a student club · always free · <a href="mailto:${C.CLUB_EMAIL}">${C.CLUB_EMAIL}</a></span>
     <span><a href="${C.INSTAGRAM}">Instagram</a> · <a href="rules.html">Terms, privacy and safety</a></span></div>`;
   if (!READY) $('#site-header').insertAdjacentHTML('afterend', '<div class="notice">Setup in progress: this site isn\'t connected to its database yet.</div>');
-  return { user, admin: role.admin, tutorStatus: role.tutor };
+  return { user, admin: role.admin, tutorStatus: role.tutor, family: role.family };
+}
+
+/* ---------- family accounts (approved by a club admin) ---------- */
+function familyFormHTML() {
+  return `<div class="f"><label for="fm-name">Your name (parent or guardian)</label><input type="text" id="fm-name" maxlength="60" autocomplete="name"></div>
+    <div class="f2"><div class="f"><label for="fm-city">City</label><input type="text" id="fm-city" maxlength="60" placeholder="Fullerton"></div>
+      <div class="f"><label for="fm-lang">Language at home</label><select id="fm-lang">${[...C.LANGUAGES, 'English', 'Other'].map(l => `<option>${esc(l)}</option>`).join('')}</select></div></div>
+    <div class="f"><label for="fm-heard">How did you hear about us?</label><input type="text" id="fm-heard" maxlength="200" placeholder="Teacher, school flyer, Instagram, a friend…"></div>
+    <label class="check"><input type="checkbox" id="fm-ok"><span>I'm a parent or legal guardian and I agree to the <a href="rules.html" target="_blank">Terms and Privacy Policy</a>.</span></label>
+    <div id="fm-err" class="err" role="alert"></div>`;
+}
+async function saveFamily() {
+  const name = $('#fm-name').value.trim();
+  if (name.length < 2 || !$('#fm-ok').checked) { $('#fm-err').textContent = 'Please add your name and agree to the terms.'; return false; }
+  const user = await currentUser();
+  const { error } = await sb.from('families').insert({ id: user.id, parent_name: name, city: $('#fm-city').value.trim(), home_lang: $('#fm-lang').value, heard: $('#fm-heard').value.trim() });
+  if (error) { $('#fm-err').textContent = error.message; return false; }
+  try { localStorage.setItem('studyhub-parent', JSON.stringify({ name })); } catch (e) {}
+  return true;
+}
+const PENDING_HTML = `<div class="ok"><b>Thanks! Your family account is waiting for approval.</b><br>A club admin reviews every new family to keep kids safe. This usually takes 1–2 days, and we'll email you when you can book.</div>`;
+// Make sure a signed-in parent has an approved family account. Calls onApproved() when they do.
+function familyGate(family, onApproved) {
+  if (family?.status === 'approved') return onApproved();
+  if (family?.status === 'pending') return openModal(`<div class="panel"><div class="ph"><h2>Almost there</h2><button class="x" data-close aria-label="Close">✕</button></div>${PENDING_HTML}<button class="btn" data-close>OK</button></div>`);
+  if (family?.status === 'declined') return openModal(`<div class="panel"><div class="ph"><h2>Account not approved</h2><button class="x" data-close aria-label="Close">✕</button></div><p>Questions? Email <a href="mailto:${C.CLUB_EMAIL}">${C.CLUB_EMAIL}</a>.</p></div>`);
+  openModal(`<form class="panel" id="famf" novalidate><div class="ph"><div><h2>Tell us about your family</h2><p class="meta">One time only. A club admin approves new families before the first booking.</p></div><button type="button" class="x" data-close aria-label="Close">✕</button></div>
+    ${familyFormHTML()}<div class="row" style="margin-top:10px"><button class="btn" type="submit">Send for approval</button></div></form>`);
+  $('#famf').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (await saveFamily()) $('#famf').innerHTML = `<div class="ph"><h2>Request sent</h2><button type="button" class="x" data-close aria-label="Close">✕</button></div>${PENDING_HTML}<button type="button" class="btn" data-close>OK</button>`;
+  });
 }
 
 /* ---------- pop-ups ---------- */

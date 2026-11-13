@@ -4,7 +4,7 @@
    request with homework photos. Signing in is only needed to send.
    ===================================================================== */
 
-const state = { lang: 'All', week: 0, user: null, tutors: [], avail: [], booked: new Set(), draft: null };
+const state = { lang: 'All', week: 0, user: null, family: null, tutors: [], avail: [], booked: new Set(), draft: null };
 const PENDING_KEY = 'studyhub-pending-booking';
 
 async function loadSchedule() {
@@ -152,21 +152,22 @@ document.addEventListener('click', e => {
   else if (b.dataset.rm) { state.draft.photos.splice(+b.dataset.rm, 1); drawThumbs(); }
   else if (b.dataset.book) {
     const [tid, date, slot] = b.dataset.book.split('|');
-    if (state.user) return openForm(tid, date, slot);
+    if (state.user) return familyGate(state.family, () => openForm(tid, date, slot));
     try { sessionStorage.setItem(PENDING_KEY, b.dataset.book); } catch (err) {}
-    signInModal('parent', { stay: true, message: 'Enter your email to request this time. We send the Meet link there.' });
+    signInModal('parent', { stay: true, mode: 'up', message: 'Enter your email to request this time. We send the Meet link there.' });
   }
 });
 
 /* ---------- start ---------- */
 (async function start() {
   $('#schedule').innerHTML = skeleton(2);
-  ({ user: state.user } = await renderChrome('find'));
+  ({ user: state.user, family: state.family } = await renderChrome('find'));
   if (!READY) { render(); return; }
   await loadSchedule(); render();
   // Coming back from the sign-in email? Open the time they picked.
   let pending = null; try { pending = sessionStorage.getItem(PENDING_KEY); } catch (e) {}
-  if (pending && state.user) { sessionStorage.removeItem(PENDING_KEY); openForm(...pending.split('|')); }
+  if (pending && state.user) { sessionStorage.removeItem(PENDING_KEY); familyGate(state.family, () => openForm(...pending.split('|'))); }
+  if (state.user && state.family?.status === 'pending') $('#schedule').insertAdjacentHTML('beforebegin', `<div style="margin-bottom:18px">${PENDING_HTML}</div>`);
   sb.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_IN' && !state.user) location.reload();
   });

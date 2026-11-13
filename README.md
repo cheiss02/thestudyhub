@@ -26,17 +26,20 @@ Plain HTML, CSS and JavaScript. No build step: edit a file, commit, and the site
 
 ## Who logs in
 
-- **Parents:** email sign-in link, no password. Kids never have accounts.
-- **Tutors:** same, with their school email. New tutors start as *pending* until an admin approves them.
-- **Admins:** anyone whose email is in the `admins` table.
+Everyone signs in with their email: a link or a 6-digit code, no password. Kids never have accounts.
+- **Parents:** create an account, fill in a short family profile, and wait for an admin to approve them before booking.
+- **Tutors:** apply with their school email and wait for an admin to approve them.
+- **Admins:** only help@thestudyhub.us to start. Admins add or remove other admins on the Club admin page.
+
+## Database updates to run (in order)
+`supabase/setup.sql` (first time only), then `supabase/migrations/002_admins.sql`, then `003_family_approval.sql`.
 
 ## Everyday changes
 
 - **Session times, languages, subjects:** edit `js/config.js`.
 - **Colors:** edit the `:root` block at the top of `css/styles.css`.
 - **Rules text:** edit `rules.html`.
-- **Add an admin:** Supabase → SQL Editor → `insert into admins (email) values ('name@school.org');`
-- **Remove an admin:** `delete from admins where email = 'name@school.org';`
+- **Add or remove admins:** Club admin page → Club admins.
 
 ## One-time setup
 
@@ -61,8 +64,9 @@ The code lets people read the email on their phone and sign in on their computer
 5. Edge Functions → Secrets: `STUDYHUB_SECRET_KEY` (your `sb_secret_...` key), `RESEND_API_KEY`, `WEBHOOK_SECRET`, `CRON_SECRET`,
    `MAIL_FROM` = `The Study Hub <no-reply@thestudyhub.us>`, `SITE_URL` = `https://thestudyhub.us`,
    `CLUB_EMAIL` = `help@thestudyhub.us`.
-6. Database → Webhooks → new webhook on table `requests`, events Insert + Update,
-   type Supabase Edge Function `notify`, add header `x-webhook-secret` = your WEBHOOK_SECRET.
+6. Database → Webhooks → create **three** webhooks, on tables `requests`, `families` and `tutors`,
+   each with events Insert + Update, type Supabase Edge Function `notify`,
+   and header `x-webhook-secret` = your WEBHOOK_SECRET.
 7. Database → Extensions: turn on `pg_cron` and `pg_net`, then run `supabase/schedule.sql`
    (fill in the project URL and CRON_SECRET).
 

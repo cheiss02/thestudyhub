@@ -61,7 +61,7 @@ document.addEventListener('click', e => {
 });
 
 (async function start() {
-  const { user } = await renderChrome('account');
+  const { user, family, tutorStatus } = await renderChrome('account');
   if (!READY) { $('#main').innerHTML = '<section class="band"><div class="wrap"><div class="empty">Coming soon.</div></div></section>'; return; }
   if (user) $('#main').innerHTML = `<section class="band"><div class="wrap">${skeleton(1)}</div></section>`;
   if (!user) {
@@ -69,8 +69,26 @@ document.addEventListener('click', e => {
       <h1>My requests</h1>
       <p style="margin:10px 0 6px">This is where parents see the sessions they've requested, get the Google Meet link once a tutor approves, and cancel if plans change.</p>
       <p class="meta" style="margin-bottom:20px">No account needed to browse tutors. You only sign in when you send a request.</p>
-      <div class="row"><button class="btn" id="go-in">Sign in with my email</button><a class="btn ghost" href="index.html">Find a tutor</a></div></div></div></section>`;
-    $('#go-in').addEventListener('click', () => signInModal('parent'));
+      <div class="row"><button class="btn" id="go-in">Sign in</button><a class="btn ghost" href="index.html">Find a tutor</a></div>
+      <p class="hint" style="margin-top:12px">New here? <button class="linkish" id="go-up">Create a free parent account</button></p></div></div></section>`;
+    $('#go-in').addEventListener('click', () => signInModal('parent', { mode: 'in' }));
+    $('#go-up').addEventListener('click', () => signInModal('parent', { mode: 'up' }));
+    return;
+  }
+  if (!family && tutorStatus) {
+    $('#main').innerHTML = `<section class="band"><div class="wrap"><div class="card intro-card"><h1>My requests</h1><p style="margin:10px 0 18px">This page is for families. Your tutor tools are on the Tutor dashboard.</p><a class="btn" href="tutor.html">Open tutor dashboard</a></div></div></section>`;
+    return;
+  }
+  if (!family) {
+    $('#main').innerHTML = `<section class="band"><div class="wrap"><form class="card intro-card" id="famf" novalidate>
+      <span class="free">STEP 2 OF 2</span><h1 style="font-size:34px">Tell us about your family</h1>
+      <p class="meta" style="margin:8px 0 18px">A club admin approves every new family before the first booking. It helps keep kids safe.</p>
+      ${familyFormHTML()}<button class="btn" type="submit" style="margin-top:10px">Send for approval</button></form></div></section>`;
+    $('#famf').addEventListener('submit', async e => { e.preventDefault(); if (await saveFamily()) location.reload(); });
+    return;
+  }
+  if (family.status !== 'approved') {
+    $('#main').innerHTML = `<section class="band"><div class="wrap"><div class="card intro-card"><h1>Hi, ${esc(family.parent_name.split(' ')[0])}</h1><div style="margin-top:14px">${family.status === 'pending' ? PENDING_HTML : `<p>Your family account wasn't approved. Questions? Email <a href="mailto:${C.CLUB_EMAIL}">${C.CLUB_EMAIL}</a>.</p>`}</div><a class="btn ghost" href="index.html">Look at tutors</a></div></div></section>`;
     return;
   }
   await load(); render(user);

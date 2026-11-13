@@ -319,11 +319,9 @@ create policy hw_delete on storage.objects for delete to authenticated
            (storage.foldername(name))[1] = auth.uid()::text or public.is_admin()));
 
 -- ---------------------------------------------------------------------
--- 7. ADMINS — put the real club emails here, then run this file.
+-- 7. ADMINS
 -- ---------------------------------------------------------------------
-insert into public.admins (email) values
-  ('support@thestudyhub.us'),
-  ('help@thestudyhub.us')
-  -- ,('advisor@school.org')
-  -- ,('officer@school.org')
-on conflict do nothing;
+-- Only the main club account. Add more admins from the Club admin page.
+insert into public.admins (email) values ('help@thestudyhub.us') on conflict do nothing;
+
+-- Then also run migrations/002_admins.sql (admin management + sign-in helper).
