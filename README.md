@@ -46,6 +46,11 @@ Plain HTML, CSS and JavaScript. No build step: edit a file, commit, and the site
 3. Project Settings → API Keys: the **Project URL** and **publishable key** go in `js/config.js` (done).
 4. Authentication → URL Configuration: Site URL `https://thestudyhub.us`, Redirect URLs `https://thestudyhub.us/**`.
 
+### 1b. Sign-in emails with a code
+Supabase → Authentication → Emails → Templates. Paste `supabase/email-templates/magic-link.html` into
+**Magic Link** and `confirm-signup.html` into **Confirm signup** (subject: "Your Study Hub sign-in code").
+The code lets people read the email on their phone and sign in on their computer.
+
 ### 2. Emails (Resend, free)
 1. Sign up at resend.com, add domain `thestudyhub.us`, and add the DNS records it shows in GoDaddy.
 2. Create an API key.

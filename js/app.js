@@ -109,17 +109,49 @@ function signInModal(role, opts = {}) {
   $('#si-back')?.addEventListener('click', () => signInModal(null, { mode }));
   $('#signin').addEventListener('submit', async e => {
     e.preventDefault();
+    if (!$('#si-email')) return; // already on the code step
     const email = $('#si-email').value.trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) { $('#si-err').textContent = 'Please enter a valid email.'; return; }
     const btn = e.target.querySelector('button[type=submit]'); const label = btn.textContent; btn.disabled = true; btn.textContent = 'Sending…';
     const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: dest } });
     if (error) { $('#si-err').textContent = error.message; btn.disabled = false; btn.textContent = label; return; }
-    $('#signin').innerHTML = `<div class="ph"><h2>Check your email</h2><button type="button" class="x" data-close aria-label="Close">✕</button></div>
-      <div class="ok sent"><span class="mail" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/></svg></span><div>We sent a link to <b>${esc(email)}</b>. Open it on this device to ${mode === 'up' ? 'finish signing up' : 'sign in'}.</div></div>
-      <p class="meta">Don't see it in a minute? Check your spam folder.</p>`;
+    showCodeStep(email, dest, mode);
   });
   $('#si-google')?.addEventListener('click', () => sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: dest } }));
 }
+// Step 2: the email has a link AND a code. The code lets someone read the email
+// on their phone and finish signing in on their computer.
+function showCodeStep(email, dest, mode) {
+  $('#signin').innerHTML = `<div class="ph"><h2>Check your email</h2><button type="button" class="x" data-close aria-label="Close">✕</button></div>
+    <div class="ok sent"><span class="mail" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/></svg></span>
+      <div>We sent an email to <b>${esc(email)}</b>.</div></div>
+    <div class="f"><label for="si-code">Type the code from the email</label>
+      <input type="text" id="si-code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456">
+      <div class="hint">Reading the email on another device, like your phone? Just type the code here. Or tap the link in the email if you're on this device.</div></div>
+    <div id="si-err" class="err" role="alert"></div>
+    <div class="row"><button class="btn" type="submit">Sign in</button><button type="button" class="linkish" id="si-resend">Send a new email</button></div>
+    <p class="meta" style="margin-top:12px">Don't see it in a minute? Check your spam folder.</p>`;
+  const input = $('#si-code');
+  input.focus();
+  input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
+  $('#si-resend').addEventListener('click', async () => {
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: dest } });
+    toast(error ? error.message : 'New email sent. Use the newest code.');
+  });
+  $('#signin').onsubmit = async e => {
+    e.preventDefault(); e.stopImmediatePropagation();
+    const token = input.value.trim();
+    if (token.length < 6) { $('#si-err').textContent = 'Enter the code from the email.'; return; }
+    const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true; btn.textContent = 'Checking…';
+    const { error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
+    if (error) {
+      $('#si-err').textContent = /expired|invalid/i.test(error.message) ? 'That code didn\'t work or has expired. Check the newest email, or send a new one.' : error.message;
+      btn.disabled = false; btn.textContent = 'Sign in'; return;
+    }
+    location.href = dest;
+  };
+}
+
 async function signOut() { await sb.auth.signOut(); location.href = 'index.html'; }
 
 /* ---------- header + footer ---------- */
