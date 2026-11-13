@@ -42,6 +42,9 @@ If you ever update the Supabase library version in the HTML files, update its `i
 - Parents see each child's sessions, the tutor's notes and total time.
 - Admins see total help hours, sessions completed and volunteer time per tutor. Each counter has **Reset** (start from zero, records kept). **Delete all sessions and photos** erases test data.
 
+## After changing CSS or JS
+Run `./bump-version.sh` (or change the `?v=` number on the file links) so visitors get the new version immediately instead of an old saved copy.
+
 ## Everyday changes
 
 - **Session times, languages, subjects:** edit `js/config.js`.
