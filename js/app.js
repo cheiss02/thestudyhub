@@ -265,18 +265,31 @@ function familyGate(family, onApproved) {
 }
 
 /* ---------- pop-ups ---------- */
+let lastFocus = null;
 function openModal(html) {
-  closeModal(true);
+  if (!$('#modal')) lastFocus = document.activeElement;
+  closeModal(true, true);
   const ov = document.createElement('div');
   ov.className = 'ov'; ov.id = 'modal'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
   ov.innerHTML = html;
   ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-close]')) closeModal(); });
+  const h = ov.querySelector('h2'); if (h) { h.id = 'modal-title'; ov.setAttribute('aria-labelledby', 'modal-title'); }
   document.body.append(ov); document.body.style.overflow = 'hidden';
-  setTimeout(() => ov.querySelector('input:not([type=checkbox]),select,textarea,button.role')?.focus(), 60);
+  setTimeout(() => (ov.querySelector('input:not([type=checkbox]),select,textarea,button.role') || ov.querySelector('button'))?.focus(), 60);
 }
-function closeModal(instant) {
+// Keep keyboard focus inside an open pop-up.
+document.addEventListener('keydown', e => {
+  const ov = $('#modal'); if (!ov || e.key !== 'Tab') return;
+  const items = $$('a[href],button:not([disabled]),input,select,textarea', ov).filter(el => el.offsetParent);
+  if (!items.length) return;
+  const first = items[0], last = items.at(-1);
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+function closeModal(instant, replacing) {
   const ov = $('#modal'); if (!ov) return;
   document.body.style.overflow = '';
+  if (!replacing && lastFocus?.isConnected) setTimeout(() => lastFocus.focus({ preventScroll: true }), 0);
   if (instant || REDUCED) { ov.remove(); return; }
   ov.id = ''; ov.classList.add('out');
   setTimeout(() => ov.remove(), 180);

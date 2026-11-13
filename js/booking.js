@@ -14,6 +14,7 @@ async function loadSchedule() {
     sb.from('availability').select('tutor_id,dow,slot'),
     sb.rpc('booked_slots', { from_date: days[0].date, to_date: days.at(-1).date }),
   ]);
+  state.loadError = !!(t.error || a.error || b.error);
   state.tutors = t.data || [];
   state.avail = a.data || [];
   state.booked = new Set((b.data || []).map(r => `${r.tutor_id}|${r.session_date}|${r.slot}`));
@@ -38,6 +39,11 @@ function weekGrid(t) {
 }
 
 function render() {
+  if (state.loadError) {
+    $('#schedule').innerHTML = `<div class="empty">We couldn't load tutor schedules right now. Check your internet connection and <button class="linkish" id="retry">try again</button>.</div>`;
+    $('#retry').addEventListener('click', async () => { $('#schedule').innerHTML = skeleton(2); await loadSchedule(); render(); });
+    return;
+  }
   const langs = ['All', ...C.LANGUAGES.filter(l => state.tutors.some(t => t.langs.includes(l)))];
   const list = state.tutors.filter(t => state.lang === 'All' || t.langs.includes(state.lang));
   const weeks = [...Array(C.WEEKS_AHEAD).keys()];
@@ -58,6 +64,7 @@ function openForm(tid, date, slot) {
   const t = state.tutors.find(x => x.id === tid);
   if (!t) return toast('That tutor is no longer available.');
   let saved = {}; try { saved = JSON.parse(localStorage.getItem('studyhub-parent') || '{}'); } catch (e) {}
+  if (state.family?.parent_name) saved.name = state.family.parent_name;
   state.draft = { tid, date, slot, photos: [] };
   const subjects = [...new Set([...t.subjects, 'Any homework'])];
   openModal(`<form class="panel" id="bookf" novalidate>

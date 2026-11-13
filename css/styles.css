@@ -16,9 +16,10 @@
   --yellow: #f7c948;                       /* open times, badges */
   --ysoft:  light-dark(#fff4d3, #2f2808);
   --coral:  #f2836b;                       /* main buttons */
-  --red:    light-dark(#e4523b, #ff8a70);  /* "We're here to help" red, decline */
+  --red:    light-dark(#c23a24, #ff8a70);  /* errors, decline (darker for readable small text) */
+  --brand-red: light-dark(#e4523b, #ff8a70); /* big "We're here to help" headline */
   --rsoft:  light-dark(#fde6e1, #331813);
-  --teal:   #2a9d8f;                       /* approve, success */
+  --teal:   light-dark(#1d7a6e, #4cc7b5);  /* links, approve, success (contrast-checked) */
   --tsoft:  light-dark(#e0f3f0, #13302d);
   --blue:   #bcdcfa;                       /* language stickers */
   --edge:   #1d2940;                       /* sticker outlines */
@@ -60,7 +61,7 @@ nav a.on { background: var(--edge); color: #fff; border-color: var(--edge); }
 
 /* ---------- stickers, chips, tags ---------- */
 .free { display: inline-block; background: var(--yellow); color: #1d2940; border: 2px solid var(--edge); border-radius: 999px; padding: 3px 12px; font: 800 13px Poppins, sans-serif; margin-bottom: 10px; }
-.help { color: var(--red); display: block; }
+.help { color: var(--brand-red); display: block; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 .chip { border: 2px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 8px 15px; font: 600 15px Inter, sans-serif; cursor: pointer; min-height: 42px; }
 .chip.on { background: var(--blue); color: #1d2940; border-color: var(--edge); box-shadow: 0 3px 0 var(--edge); }
@@ -96,7 +97,7 @@ nav a.on { background: var(--edge); color: #fff; border-color: var(--edge); }
 .btn.ghost { background: var(--card); color: var(--ink); border-color: var(--line); box-shadow: none; }
 .btn.no { background: var(--card); color: var(--red); border-color: var(--red); box-shadow: none; }
 .btn.y { background: var(--yellow); }
-.btn.go { background: var(--teal); color: #fff; }
+.btn.go { background: #1d7a6e; color: #fff; }
 .btn.small { min-height: 36px; padding: 6px 12px; font-size: 14px; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 

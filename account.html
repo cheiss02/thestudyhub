@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://ekjyotgllvleiupzawog.supabase.co; connect-src https://ekjyotgllvleiupzawog.supabase.co wss://ekjyotgllvleiupzawog.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>My Requests | The Study Hub</title>
   <meta name="description" content="See your tutoring requests and Google Meet links.">
   <link rel="canonical" href="https://thestudyhub.us/account.html">
@@ -27,11 +29,12 @@
 <body data-page="account">
   <a class="skip" href="#main">Skip to content</a>
   <header id="site-header" class="site-header band"></header>
+  <noscript><div class="notice">The Study Hub needs JavaScript turned on to show schedules and sign in.</div></noscript>
   <main id="main"><section class="band"><div class="wrap"><p class="meta">Loading…</p></div></section></main>
   <footer id="site-footer" class="band" style="padding-block:20px"></footer>
 
   <!-- Supabase library, then our files -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.min.js" integrity="sha384-yiVMs0R/Jyz7OhoXa/DsEMUSBLjEhr/QJta2ONO+zB6I8/GmNg/7AUFrZmAJV7KV" crossorigin="anonymous"></script>
   <script src="js/config.js"></script>
   <script src="js/app.js"></script>
   <script src="js/account.js"></script>
