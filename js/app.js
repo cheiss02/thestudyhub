@@ -50,8 +50,11 @@ function isPast(dateStr, slot) {
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // Smoothly cross-fade a screen update (browsers that support it), otherwise just update.
 function swap(update) {
-  if (document.startViewTransition && !REDUCED) document.startViewTransition(update);
-  else update();
+  if (document.startViewTransition && !REDUCED) {
+    const t = document.startViewTransition(update);
+    // A quick second click cancels the first animation; that's fine, so don't log it as an error.
+    t.ready.catch(() => {}); t.finished.catch(() => {});
+  } else update();
 }
 
 /* ---------- sign-in ---------- */
