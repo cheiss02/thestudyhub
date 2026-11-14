@@ -192,9 +192,9 @@ function dashboard() {
   if (T.tab === 'requests') body = list.length ? `<div class="stack1">${list.map(reqCard).join('')}</div>` : '<div class="empty">No requests yet. Families see your open times on the Find a tutor page.</div>';
   else if (T.tab === 'history') body = historyView();
   else if (T.tab === 'week') body = `<div class="sched">
-    <div class="card"><h2>Calendar</h2><p class="meta" style="margin:6px 0 14px">Plan up to ${C.WEEKS_AHEAD} weeks ahead. Tap a time to change just that date: <span class="key on">Open</span> <span class="key extra">Extra</span> <span class="key off">Off</span>. Use <b>Day off</b> for holidays and tests.</p>
-      ${weekNav(T.week, C.WEEKS_AHEAD, 'data-tweek')}${calendarEditor()}</div>
-    <div class="card"><h2>Every week</h2><p class="meta" style="margin:6px 0 14px">Your usual times. They repeat every week unless you change a date in the calendar. Closing a time doesn't cancel sessions already booked.</p>${weekEditor()}</div></div>`;
+    <div class="card"><h2><span class="sched-n">1</span>Every week</h2><p class="meta" style="margin:6px 0 14px">Your usual times. <b>Set them once</b> and they repeat every week. Closing a time doesn't cancel sessions already booked.</p>${weekEditor()}</div>
+    <div class="card"><h2><span class="sched-n blue">2</span>Calendar</h2><p class="meta" style="margin:6px 0 14px">For <b>one specific date</b> only, up to ${C.WEEKS_AHEAD} weeks ahead. Tap a time to change just that day: <span class="key on">Open</span> <span class="key extra">Extra</span> <span class="key off">Off</span>. Use <b>Day off</b> for games, tests and holidays. Booked sessions show the child's name.</p>
+      ${weekNav(T.week, C.WEEKS_AHEAD, 'data-tweek')}${calendarEditor()}</div></div>`;
   else body = profileForm();
   page(`${T.me.status === 'paused' ? '<div class="warn" style="margin-bottom:18px">Your profile is paused by the club, so families can\'t see your times right now.</div>' : ''}
     ${!T.priv?.meet_link ? '<div class="warn" style="margin-bottom:18px">Add your Google Meet link in <b>Profile</b> so you can approve requests.</div>' : ''}

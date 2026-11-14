@@ -399,3 +399,5 @@ details[open] p { animation: rise .3s var(--ease); }
 @media (max-width: 860px) { .deal { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .deal-list { grid-template-columns: 1fr; } }
 .es-nav { display: flex; }
+.sched-n { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--yellow); border: 2px solid var(--edge); color: #1d2940; font: 800 17px Poppins, sans-serif; margin-right: 10px; vertical-align: 3px; }
+.sched-n.blue { background: var(--blue); }
