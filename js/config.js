@@ -33,7 +33,8 @@ window.STUDYHUB = {
   // How many weeks ahead families can book and tutors can plan (max 9).
   WEEKS_AHEAD: 8,
 
-  LANGUAGES: ['Spanish', 'Mandarin', 'Cantonese', 'Vietnamese', 'Korean', 'Arabic', 'Tagalog', 'Armenian', 'Farsi'],
+  // Languages the club offers besides English. Tutors can also type another language when they apply.
+  LANGUAGES: ['Spanish', 'Tagalog', 'Arabic', 'Telugu'],
   SUBJECTS: ['Reading', 'Writing', 'Math', 'Science', 'Spelling'],
   KID_GRADES: ['TK', 'K', '1st', '2nd', '3rd', '4th', '5th'],
   TUTOR_GRADES: ['9th', '10th', '11th', '12th'],
