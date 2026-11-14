@@ -12,22 +12,30 @@ async function load() {
 }
 
 function render(user) {
-  const upcoming = mine.filter(r => ['pending', 'approved'].includes(r.status) && !r.completed_at && !isPast(r.session_date, r.slot));
+  // Pending requests stay here until the start time; approved sessions until they end (30 min).
+  const upcoming = mine.filter(r => !r.completed_at && (r.status === 'pending' ? minsToStart(r.session_date, r.slot) > 0 : r.status === 'approved' && minsToStart(r.session_date, r.slot) > -30));
   const done = mine.filter(r => r.completed_at);
   const past = mine.filter(r => !upcoming.includes(r) && !done.includes(r));
   const label = { pending: 'Waiting for tutor', approved: 'Approved', declined: 'Declined', cancelled: 'Cancelled' };
   // Totals per child
   const kids = {};
   for (const r of done) { const k = (kids[r.child_first.toLowerCase()] ||= { name: r.child_first, n: 0, mins: 0, tutors: new Set() }); if (r.attended) { k.n++; k.mins += r.minutes || 0; k.tutors.add(r.tutor_name); } }
-  const card = r => `<article class="card req ${r.status}">
-    <div class="row" style="justify-content:space-between"><h3>${esc(r.child_first)} · ${esc(r.subject)}</h3><span class="status ${r.completed_at ? (r.attended ? 'approved' : 'declined') : r.status}">${sessionLabel(r) || (r.status === 'approved' && isPast(r.session_date, r.slot) ? 'Session time passed' : label[r.status])}</span></div>
+  const card = r => { const ms = minsToStart(r.session_date, r.slot), open = r.status === 'approved' && !r.completed_at;
+    return `<article class="card req ${r.status}">
+    <div class="row" style="justify-content:space-between"><h3>${esc(r.child_first)} · ${esc(r.subject)}</h3><span class="status ${r.completed_at ? (r.attended ? 'approved' : 'declined') : r.status}">${sessionLabel(r) || (open && ms <= 0 && ms > -30 ? 'Happening now' : r.status === 'approved' && isPast(r.session_date, r.slot) ? 'Session time passed' : label[r.status])}</span></div>
     <p style="margin-top:6px;font-weight:600">${fmtDate(r.session_date)} at ${fmtTime(r.slot)} with ${esc(r.tutor_name)}</p>
     ${r.tutor_note ? `<div class="note"><b>Note from ${esc(r.tutor_name)}:</b> ${esc(r.tutor_note)}</div>` : ''}
     ${r.session_note ? `<div class="note"><b>What they worked on:</b> ${esc(r.session_note)}</div>` : ''}
     ${r.status === 'approved' && r.meet_link && r.session_date >= today() ? `<div class="row" style="margin-top:12px"><a class="btn go" href="${esc(r.meet_link)}" target="_blank" rel="noopener">Join Google Meet</a><span class="meta">Please stay nearby during the call.</span></div>` : ''}
+    ${open && ms > -30 && r.late_by === 'tutor' ? `<div class="note warn"><b>Heads up:</b> ${esc(r.tutor_name)} is running about ${r.late_minutes} minutes late. Please stay in the Meet.</div>` : ''}
+    ${open && ms > -30 && r.late_by === 'parent' ? `<div class="note">You told ${esc(r.tutor_name)} you're running about ${r.late_minutes} minutes late.</div>` : ''}
+    ${r.status === 'cancelled' && r.cancelled_by === 'tutor' ? `<p class="meta" style="margin-top:8px">${esc(r.tutor_name)} had to cancel. Sorry! <a href="index.html">Book another time</a>.</p>` : ''}
+    ${r.tutor_no_show_at ? '<p class="meta" style="margin-top:8px">Thanks for telling us. A club admin will follow up. <a href="index.html">Book another time</a>.</p>' : ''}
+    ${open && ms <= -10 && ms > -2880 ? `<div class="row" style="margin-top:12px"><button class="linkish" data-noshow="${r.id}">The tutor never joined?</button></div>` : ''}
     ${r.status === 'declined' ? '<p class="meta" style="margin-top:8px">This tutor couldn\'t take this one. <a href="index.html">Pick another time</a>.</p>' : ''}
-    ${upcoming.includes(r) ? `<div class="row" style="margin-top:12px"><button class="btn no small" data-cancel="${r.id}">Cancel session</button></div>` : ''}
-  </article>`;
+    ${upcoming.includes(r) ? `<div class="row" style="margin-top:12px">${r.status === 'approved' && ms <= 60 ? `<button class="btn ghost small" data-late="${r.id}">Running late</button>` : ''}<button class="btn no small" data-cancel="${r.id}">${r.status === 'approved' ? "Can't make it" : 'Cancel request'}</button></div>
+      ${r.status === 'approved' && ms <= 60 ? '<p class="hint">Late or can\'t make it? Tell your tutor here. We email them right away.</p>' : ''}` : ''}
+  </article>`; };
   $('#main').innerHTML = `<section class="band"><div class="wrap">
     <div class="top"><div><h1>My requests</h1><p>Signed in as ${esc(user.email)}. We also email you when a tutor answers. <a href="help.html#parents">How it works</a></p></div><a class="btn y" href="index.html">Book another session</a></div>
     <h2 style="margin-bottom:12px">Coming up</h2>
@@ -42,11 +50,23 @@ function render(user) {
   </div></section>`;
 }
 
+const refresh = async () => { await load(); render(await currentUser()); };
 async function cancel(id) {
-  const { error } = await sb.rpc('cancel_request', { req: id });
-  if (error) return toast(error.message);
-  toast('Session cancelled. We let the tutor know.');
-  await load(); render(await currentUser());
+  const r = mine.find(q => q.id === id);
+  const go = async () => {
+    const { error } = await sb.rpc('cancel_request', { req: id });
+    if (error) return toast(error.message);
+    toast('Cancelled. We let the tutor know.'); await refresh();
+  };
+  if (r?.status !== 'approved') return go();
+  askConfirm("Can't make it?", `We'll cancel ${esc(r.child_first)}'s session with ${esc(r.tutor_name)} and email them right away. You can book another time anytime.`, 'Yes, cancel it', go);
+}
+function reportNoShow(id) {
+  askConfirm('The tutor never joined?', "Sorry about that! We'll let a club admin know and close this session so you can book another time.", 'Report it', async () => {
+    const { error } = await sb.rpc('report_tutor_no_show', { req: id });
+    if (error) return toast(error.message);
+    toast("Thanks for telling us. We're on it."); await refresh();
+  }, 'They joined');
 }
 
 function confirmDelete() {
@@ -65,6 +85,8 @@ function confirmDelete() {
 
 document.addEventListener('click', e => {
   const c = e.target.closest('[data-cancel]'); if (c) cancel(c.dataset.cancel);
+  const l = e.target.closest('[data-late]'); if (l) lateModal(mine.find(q => q.id === l.dataset.late), refresh);
+  const n = e.target.closest('[data-noshow]'); if (n) reportNoShow(n.dataset.noshow);
   if (e.target.id === 'del-all') confirmDelete();
 });
 

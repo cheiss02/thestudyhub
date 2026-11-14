@@ -32,7 +32,7 @@ Everyone signs in with their email: a link or a 6-digit code, no password. Kids 
 - **Admins:** only help@thestudyhub.us to start. Admins add or remove other admins on the Club admin page.
 
 ## Database updates to run (in order)
-`supabase/setup.sql` (first time only), then `supabase/migrations/002_admins.sql`, `003_family_approval.sql`, `004_hardening.sql`, `005_session_records.sql`, `006_calendar_dates.sql` and `007_reminders.sql`.
+`supabase/setup.sql` (first time only), then `supabase/migrations/002_admins.sql`, `003_family_approval.sql`, `004_hardening.sql`, `005_session_records.sql`, `006_calendar_dates.sql`, `007_reminders.sql` and `008_late_and_no_shows.sql`.
 
 If you ever update the Supabase library version in the HTML files, update its `integrity` hash too (the browser refuses a file that doesn't match).
 

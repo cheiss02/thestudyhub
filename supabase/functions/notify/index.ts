@@ -1,7 +1,8 @@
 // =====================================================================
 // The Study Hub — email notifications
 // Runs from Supabase Database Webhooks (see README) on these tables:
-//   requests  → new request, approved, declined, cancelled
+//   requests  → new request, approved, declined, cancelled (+ last-minute alert),
+//               running late, no-shows (with repeat no-show alerts to the club)
 //   families  → new family to review (to the club), approved/declined (to the parent)
 //   tutors    → new tutor application (to the club), approved/declined (to the tutor)
 //
@@ -34,6 +35,22 @@ function layout(title: string, body: string, button?: [string, string]) {
       ${button ? `<p style="margin:22px 0"><a href="${button[1]}" style="background:#f2836b;color:#1d2940;border:2px solid #1d2940;border-radius:999px;padding:11px 20px;font-weight:700;text-decoration:none">${button[0]}</a></p>` : ""}
       <p style="color:#55627a;font-size:13px;margin-top:24px">The Study Hub is a free student club. Questions? Reply to ${CLUB}.</p></div></div>`;
 }
+// Minutes from now until a session starts (Los Angeles time).
+function minsUntil(date: string, slot: string) {
+  const la = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  const [y, mo, d] = date.split("-").map(Number), [h, m] = slot.split(":").map(Number);
+  return (new Date(y, mo - 1, d, h, m).getTime() - la.getTime()) / 60000;
+}
+function endTime(slot: string) {
+  const [h, m] = slot.split(":").map(Number), t = h * 60 + m + 30;
+  const H = Math.floor(t / 60), M = t % 60;
+  return `${((H + 11) % 12) + 1}:${String(M).padStart(2, "0")} ${H < 12 ? "am" : "pm"}`;
+}
+async function noShows(kind: "family" | "tutor", person: string) {
+  const { data } = await sb.rpc("no_show_counts");
+  return (data || []).find((x: { kind: string; person: string; n: number }) => x.kind === kind && x.person === person)?.n ?? 0;
+}
+
 async function send(to: string | undefined, subject: string, html: string) {
   if (!to) return;
   const r = await fetch("https://api.resend.com/emails", {
@@ -56,9 +73,9 @@ Deno.serve(async (req) => {
         layout("A new family signed up", `<p><b>${esc(r.parent_name)}</b>${r.city ? ` from ${esc(r.city)}` : ""}${r.home_lang ? `, speaks ${esc(r.home_lang)} at home` : ""}.</p>${r.heard ? `<p>Heard about us: ${esc(r.heard)}</p>` : ""}<p>Approve or decline them on the Club admin page.</p>`, ["Review families", `${SITE}/admin.html`]));
     } else if (changed && r.status !== "pending") {
       const { data: u } = await sb.auth.admin.getUserById(r.id);
-      if (r.status === "approved") await send(u?.user?.email, "You're approved! Book a free tutor",
+      if (r.status === "approved" && old?.status === "pending") await send(u?.user?.email, "You're approved! Book a free tutor",
         layout("Your family account is approved", `<p>Hi ${esc(r.parent_name)}, you can now book free homework help with our bilingual tutors.</p>`, ["Find a tutor", SITE]));
-      else await send(u?.user?.email, "About your Study Hub account",
+      else if (old?.status === "pending") await send(u?.user?.email, "About your Study Hub account",
         layout("We couldn't approve your account", `<p>Hi ${esc(r.parent_name)}, we weren't able to approve your family account right now. If you have questions, just reply to this email.</p>`));
     }
     return new Response("ok");
@@ -107,8 +124,53 @@ Deno.serve(async (req) => {
         ${r.tutor_note ? `<p><b>Note:</b> ${esc(r.tutor_note)}</p>` : ""}<p>Please pick another time or tutor. It's still free!</p>`,
         ["Find another time", SITE]));
     } else if (r.status === "cancelled") {
-      const msg = layout("Session cancelled", `<p>The session for <b>${child}</b> with ${tName} on <b>${at}</b> was cancelled.</p>`, ["Open The Study Hub", SITE]);
-      await Promise.all([send(parentEmail, `Cancelled: ${r.child_first}'s session ${at}`, msg), send(priv?.school_email, `Cancelled: ${r.child_first}'s session ${at}`, msg)]);
+      const by = r.cancelled_by === "tutor" ? `${tName} (the tutor)` : r.cancelled_by === "parent" ? "the family" : r.cancelled_by === "admin" ? "a club admin" : "";
+      const subject = `Cancelled: ${r.child_first}'s session ${at}`;
+      const base = `<p>The session for <b>${child}</b> with ${tName} on <b>${at}</b> was cancelled${by ? ` by ${by}` : ""}.</p>`;
+      await Promise.all([
+        send(parentEmail, subject, layout("Session cancelled", base + (r.cancelled_by === "tutor" ? "<p>We're sorry! You can book another time or another tutor. It's still free.</p>" : ""), [r.cancelled_by === "tutor" ? "Book another time" : "Open The Study Hub", SITE])),
+        send(priv?.school_email, subject, layout("Session cancelled", base + "<p>That time is open again on your calendar.</p>", ["Open my dashboard", `${SITE}/tutor.html`])),
+      ]);
+      // Cancelled less than 2 hours before the start: let the club know.
+      if (old?.status === "approved" && minsUntil(r.session_date, r.slot) < 120 && r.cancelled_by !== "admin") {
+        await send(CLUB, `Last-minute cancel: ${r.child_first}'s session ${at}`,
+          layout("Last-minute cancellation", `<p>${by || "Someone"} cancelled <b>${child}</b>'s session with ${tName} on <b>${at}</b>, less than 2 hours before it started.</p><p>No action needed unless this keeps happening.</p>`, ["Club admin", `${SITE}/admin.html`]));
+      }
+    }
+  }
+
+  if (type === "UPDATE" && r.late_at && r.late_at !== old?.late_at) {
+    // Running late: tell the other side right away.
+    const tutorLate = r.late_by === "tutor";
+    const who = tutorLate ? tName : `${child}'s family`;
+    const html = layout(`${tutorLate ? "Your tutor is" : "The family is"} running late`,
+      `<p>${who} will be about <b>${r.late_minutes} minutes</b> late for the session on <b>${at}</b>.</p>
+       <p>Please stay in the Google Meet. The session still ends at <b>${endTime(r.slot)}</b>.</p>`,
+      tutorLate ? ["Join Google Meet", esc(priv?.meet_link || `${SITE}/account.html`)] : ["Open my Meet", esc(priv?.meet_link || `${SITE}/tutor.html`)]);
+    await send(tutorLate ? parentEmail : priv?.school_email, `Running ${r.late_minutes} min late: ${r.child_first}'s session`, html);
+  }
+
+  if (type === "UPDATE" && r.completed_at && !old?.completed_at && r.attended === false) {
+    if (r.tutor_no_show_at) {
+      // The family reported that the tutor never joined.
+      const n = await noShows("tutor", r.tutor_id);
+      await Promise.all([
+        send(parentEmail, `We're sorry: ${r.child_first}'s session ${at}`,
+          layout("We're sorry your tutor didn't join", `<p>Thanks for letting us know. A club admin will follow up with ${tName}.</p><p>You can book another time or another tutor right away. It's still free.</p>`, ["Book another time", SITE])),
+        send(priv?.school_email, `Missed session: ${r.child_first}, ${at}`,
+          layout("The family says you didn't join", `<p>${esc(r.parent_name)} reported that you didn't join <b>${child}</b>'s session on <b>${at}</b>.</p><p>If that's not right, reply to this email. Next time, if you can't make it, tap <b>Cancel session</b> or <b>Running late</b> on your dashboard so the family knows.</p>`, ["Open my dashboard", `${SITE}/tutor.html`])),
+        send(CLUB, `Tutor no-show (${n} in 30 days): ${tutor?.name ?? "tutor"}`,
+          layout("A tutor didn't join a session", `<p><b>${tName}</b> didn't join <b>${child}</b>'s session on <b>${at}</b> (reported by the family).</p><p>No-shows in the last 30 days: <b>${n}</b>.${n >= 3 ? " <b>Please pause this tutor</b> on the Club admin page and talk with them." : n >= 2 ? " Please check in with them." : ""}</p>`, ["Club admin", `${SITE}/admin.html`])),
+      ]);
+    } else {
+      // The tutor logged that the child didn't join.
+      const n = await noShows("family", r.parent_id);
+      await send(parentEmail, `We missed ${r.child_first} today`,
+        layout(`We missed ${child} today`, `<p>${tName} waited in the Google Meet for <b>${child}</b>'s session on <b>${at}</b>, but no one joined.</p>
+          <p>No problem, life happens! Next time, please tap <b>Can't make it</b> or <b>Running late</b> on My requests so your tutor knows.</p>
+          ${n >= 2 ? "<p>We've missed you a few times this month. If these times don't work anymore, please pick times that do so tutors can help other kids too.</p>" : ""}`, ["Book another time", SITE]));
+      if (n >= 2) await send(CLUB, `Family no-show (${n} in 30 days): ${r.parent_name}`,
+        layout("A family missed another session", `<p><b>${esc(r.parent_name)}</b> missed <b>${child}</b>'s session with ${tName} on <b>${at}</b>.</p><p>No-shows in the last 30 days: <b>${n}</b>.${n >= 3 ? " Please reach out, and pause their bookings if needed." : " Please check in with them."}</p>`, ["Club admin", `${SITE}/admin.html`]));
     }
   }
   return new Response("ok");

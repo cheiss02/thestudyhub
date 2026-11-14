@@ -33,7 +33,30 @@ function fmtHours(mins) {
   const h = Math.floor(mins / 60), m = Math.round(mins % 60);
   return h && m ? `${h} h ${m} min` : h ? `${h} h` : `${m} min`;
 }
-const sessionLabel = r => r.completed_at ? (r.attended ? `Done · ${r.minutes} min` : "Didn't join") : null;
+const sessionLabel = r => r.completed_at ? (r.attended ? `Done · ${r.minutes} min` : r.tutor_no_show_at ? "Tutor didn't join" : "Child didn't join") : null;
+// Minutes from now until a session starts (negative once it has started). Sessions last 30 minutes.
+function minsToStart(dateStr, slot) { const [h, m] = slot.split(':').map(Number); const d = parseDate(dateStr); d.setHours(h, m); return (d - new Date()) / 60000; }
+// Simple yes/no pop-up.
+function askConfirm(title, text, yes, onYes, no = 'Go back') {
+  openModal(`<div class="panel"><div class="ph"><h2>${title}</h2><button class="x" data-close aria-label="Close">✕</button></div>
+    <p>${text}</p><div class="row" style="margin-top:16px"><button class="btn no" id="ask-yes">${yes}</button><button class="btn ghost" data-close>${no}</button></div></div>`);
+  $('#ask-yes').addEventListener('click', async e => { e.target.disabled = true; closeModal(); await onYes(); });
+}
+// Running late / can't make it: pick how many minutes, then send.
+function lateModal(r, rpcDone) {
+  openModal(`<div class="panel"><div class="ph"><h2>Running late?</h2><button class="x" data-close aria-label="Close">✕</button></div>
+    <p>We'll email the other person right away. The session still ends at its usual time.</p>
+    <div class="chips" style="margin:14px 0" role="group" aria-label="How late">${[5, 10, 15, 20, 30].map(n => `<button class="chip" data-late-min="${n}">About ${n} min</button>`).join('')}</div>
+    <p class="meta">More than 15 minutes late? It's usually better to tap <b>Can't make it</b> and book another time.</p></div>`);
+  $('#modal .panel').addEventListener('click', async e => {
+    const b = e.target.closest('[data-late-min]'); if (!b) return;
+    b.disabled = true;
+    const { error } = await sb.rpc('running_late', { req: r.id, mins: Number(b.dataset.lateMin) });
+    closeModal();
+    if (error) return toast(error.message);
+    toast('Sent! They know you are on your way.'); rpcDone();
+  });
+}
 
 // Days of a school week. offset 0 = this week, 1 = next week.
 function weekDays(offset) {
@@ -284,7 +307,7 @@ const PENDING_HTML = `<div class="ok"><b>Thanks! Your family account is waiting 
 function familyGate(family, onApproved) {
   if (family?.status === 'approved') return onApproved();
   if (family?.status === 'pending') return openModal(`<div class="panel"><div class="ph"><h2>Almost there</h2><button class="x" data-close aria-label="Close">✕</button></div>${PENDING_HTML}<button class="btn" data-close>OK</button></div>`);
-  if (family?.status === 'declined') return openModal(`<div class="panel"><div class="ph"><h2>Account not approved</h2><button class="x" data-close aria-label="Close">✕</button></div><p>Questions? Email <a href="mailto:${C.CLUB_EMAIL}">${C.CLUB_EMAIL}</a>.</p></div>`);
+  if (family?.status === 'declined') return openModal(`<div class="panel"><div class="ph"><h2>Booking is paused</h2><button class="x" data-close aria-label="Close">✕</button></div><p>Your family account can't book sessions right now. Questions? Email <a href="mailto:${C.CLUB_EMAIL}">${C.CLUB_EMAIL}</a>.</p></div>`);
   openModal(`<form class="panel" id="famf" novalidate><div class="ph"><div><h2>Tell us about your family</h2><p class="meta">One time only. A club admin approves new families before the first booking.</p></div><button type="button" class="x" data-close aria-label="Close">✕</button></div>
     ${familyFormHTML()}<div class="row" style="margin-top:10px"><button class="btn" type="submit">Send for approval</button></div></form>`);
   $('#famf').addEventListener('submit', async e => {

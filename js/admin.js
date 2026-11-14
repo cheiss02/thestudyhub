@@ -9,16 +9,18 @@ const MAIN_ADMIN = 'help@thestudyhub.us';
 
 async function load() {
   const from = isoDate(new Date(Date.now() - 7 * 864e5));
-  const [t, p, a, r, ad, fm, all, cs] = await Promise.all([
+  const [t, p, a, r, ad, fm, all, cs, ns] = await Promise.all([
     sb.from('tutors').select('*').order('created_at'),
     sb.from('tutor_private').select('*'),
     sb.from('availability').select('tutor_id'),
-    sb.from('requests').select('id,tutor_id,session_date,slot,child_first,grade,subject,status,parent_name,completed_at,attended,minutes').gte('session_date', from).order('session_date').order('slot'),
+    sb.from('requests').select('id,tutor_id,session_date,slot,child_first,grade,subject,status,parent_name,completed_at,attended,minutes,tutor_no_show_at,cancelled_by,parent_id').gte('session_date', from).order('session_date').order('slot'),
     sb.from('admins').select('email').order('email'),
     sb.from('families').select('*').order('created_at', { ascending: false }),
     sb.from('requests').select('id,tutor_id,created_at,completed_at,attended,minutes,photo_paths'),
     sb.from('club_settings').select('key,since'),
+    sb.rpc('admin_no_show_counts'),
   ]);
+  A.noShows = Object.fromEntries((ns.data || []).map(x => [x.kind + ':' + x.person, x.n]));
   A.all = all.data || [];
   A.since = Object.fromEntries((cs.data || []).map(x => [x.key, x.since]));
   A.families = fm.data || [];
@@ -41,6 +43,9 @@ function metrics() {
 }
 const sinceLabel = key => !A.since[key] || A.since[key] < '2001' ? 'since the start' : `since ${fmtDate(A.since[key].slice(0, 10))}`;
 const resettable = (key, value, label) => `<div class="stat"><b>${value}</b><span>${label}</span><small class="since">${sinceLabel(key)} · <button class="linkish" data-reset="${key}">Reset</button></small></div>`;
+
+// 2 no-shows in 30 days = check in; 3 = pause.
+const noShowCell = (kind, id) => { const n = A.noShows?.[kind + ':' + id] || 0; return n >= 3 ? `<span class="status declined">${n} · pause?</span>` : n === 2 ? `<span class="status log">${n} · check in</span>` : String(n); };
 
 function render() {
   const active = A.tutors.filter(t => t.status === 'active');
@@ -84,7 +89,7 @@ function render() {
       : '<div class="empty" style="margin-bottom:28px">No applications waiting.</div>'}
 
     <h2 style="margin-bottom:12px">Tutors</h2>
-    <div class="scroll" style="margin-bottom:28px"><table class="stack"><thead><tr><th>Tutor</th><th>Email</th><th>Languages</th><th>Weekly times</th><th>Meet link</th><th>Volunteer time</th><th>Status</th></tr></thead><tbody>
+    <div class="scroll" style="margin-bottom:28px"><table class="stack"><thead><tr><th>Tutor</th><th>Email</th><th>Languages</th><th>Weekly times</th><th>Meet link</th><th>Volunteer time</th><th>No-shows (30 days)</th><th>Status</th></tr></thead><tbody>
     ${A.tutors.filter(t => ['active', 'paused'].includes(t.status)).map(t => `<tr>
       <td data-l="Tutor"><b>${esc(t.name)}</b> · ${esc(t.grade)}</td>
       <td data-l="Email">${esc(A.priv[t.id]?.school_email || '')}</td>
@@ -92,7 +97,8 @@ function render() {
       <td data-l="Weekly times">${A.avail.filter(a => a.tutor_id === t.id).length}</td>
       <td data-l="Meet link">${A.priv[t.id]?.meet_link ? 'Yes' : '<span style="color:var(--red)">Missing</span>'}</td>
       <td data-l="Volunteer time">${fmtHours(M.tutorMins(t.id))}</td>
-      <td data-l="Status"><div class="row"><button class="btn small ${t.status === 'active' ? 'ghost' : 'y'}" data-set="${t.id}|${t.status === 'active' ? 'paused' : 'active'}">${t.status === 'active' ? 'Active · pause' : 'Paused · turn on'}</button><button class="linkish danger" data-remove="tutors|${t.id}|${esc(t.name)}">Remove</button></div></td></tr>`).join('') || '<tr><td colspan="7">No tutors yet.</td></tr>'}
+      <td data-l="No-shows (30 days)">${noShowCell('tutor', t.id)}</td>
+      <td data-l="Status"><div class="row"><button class="btn small ${t.status === 'active' ? 'ghost' : 'y'}" data-set="${t.id}|${t.status === 'active' ? 'paused' : 'active'}">${t.status === 'active' ? 'Active · pause' : 'Paused · turn on'}</button><button class="linkish danger" data-remove="tutors|${t.id}|${esc(t.name)}">Remove</button></div></td></tr>`).join('') || '<tr><td colspan="8">No tutors yet.</td></tr>'}
     </tbody></table></div>
 
     <h2 style="margin-bottom:6px">Club admins</h2>
@@ -110,15 +116,16 @@ function render() {
       <td data-l="Child">${esc(r.child_first)} (${esc(r.grade)})</td>
       <td data-l="Subject">${esc(r.subject)}</td>
       <td data-l="Parent">${esc(r.parent_name)}</td>
-      <td data-l="Status"><span class="status ${r.completed_at ? (r.attended ? 'approved' : 'declined') : r.status === 'approved' && isPast(r.session_date, r.slot) ? 'log' : r.status}">${sessionLabel(r) || (r.status === 'approved' && isPast(r.session_date, r.slot) ? 'Not logged yet' : statusLabel[r.status])}</span></td>
+      <td data-l="Status"><span class="status ${r.completed_at ? (r.attended ? 'approved' : 'declined') : r.status === 'approved' && isPast(r.session_date, r.slot) ? 'log' : r.status}">${sessionLabel(r) || (r.status === 'approved' && isPast(r.session_date, r.slot) ? 'Not logged yet' : r.status === 'cancelled' && r.cancelled_by ? `Cancelled by ${{ parent: 'family', tutor: 'tutor', admin: 'admin' }[r.cancelled_by]}` : statusLabel[r.status])}</span></td>
       <td data-l="">${['pending', 'approved'].includes(r.status) && !r.completed_at && !isPast(r.session_date, r.slot) ? `<button class="btn no small" data-cancel="${r.id}">Cancel</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7">No sessions yet.</td></tr>'}
     </tbody></table></div>
 
     <h2 style="margin:28px 0 12px">Families</h2>
-    <div class="scroll"><table class="stack"><thead><tr><th>Parent</th><th>City</th><th>Language</th><th>Status</th><th></th></tr></thead><tbody>
+    <div class="scroll"><table class="stack"><thead><tr><th>Parent</th><th>City</th><th>Language</th><th>No-shows (30 days)</th><th>Status</th><th></th></tr></thead><tbody>
     ${A.families.filter(f => f.status !== 'pending').map(f => `<tr><td data-l="Parent"><b>${esc(f.parent_name)}</b></td><td data-l="City">${esc(f.city)}</td><td data-l="Language">${esc(f.home_lang)}</td>
-      <td data-l="Status"><span class="status ${f.status}">${f.status === 'approved' ? 'Approved' : 'Declined'}</span></td>
-      <td data-l=""><button class="linkish danger" data-remove="families|${f.id}|${esc(f.parent_name)}">Remove</button></td></tr>`).join('') || '<tr><td colspan="5">No families yet.</td></tr>'}
+      <td data-l="No-shows (30 days)">${noShowCell('family', f.id)}</td>
+      <td data-l="Status"><button class="btn small ${f.status === 'approved' ? 'ghost' : 'y'}" data-fam="${f.id}|${f.status === 'approved' ? 'declined' : 'approved'}">${f.status === 'approved' ? 'Can book · pause' : 'Paused · turn on'}</button></td>
+      <td data-l=""><button class="linkish danger" data-remove="families|${f.id}|${esc(f.parent_name)}">Remove</button></td></tr>`).join('') || '<tr><td colspan="6">No families yet.</td></tr>'}
     </tbody></table></div>
 
     <div class="card danger-zone">
@@ -193,7 +200,8 @@ document.addEventListener('click', async e => {
     const [id, status] = fb.dataset.fam.split('|');
     const { error } = await sb.from('families').update({ status }).eq('id', id);
     if (error) { fb.disabled = false; return toast(error.message); }
-    toast(status === 'approved' ? 'Family approved. We emailed them.' : 'Family declined.'); await load(); render(); return;
+    const was = A.families.find(f => f.id === id)?.status;
+    toast(was === 'pending' ? (status === 'approved' ? 'Family approved. We emailed them.' : 'Family declined.') : (status === 'approved' ? 'Family can book again.' : 'Family paused. They can\'t book new sessions.')); await load(); render(); return;
   }
   const b = e.target.closest('[data-set],[data-cancel]'); if (!b) return;
   b.disabled = true;

@@ -19,7 +19,7 @@ async function loadDashboard() {
   const [a, r, h, x] = await Promise.all([
     sb.from('availability').select('tutor_id,dow,slot').eq('tutor_id', T.user.id),
     sb.from('requests').select('*').eq('tutor_id', T.user.id).gte('session_date', from).order('session_date').order('slot'),
-    sb.from('requests').select('id,parent_id,parent_name,child_first,grade,subject,session_date,slot,attended,minutes,session_note,completed_at')
+    sb.from('requests').select('id,parent_id,parent_name,child_first,grade,subject,session_date,slot,attended,minutes,session_note,completed_at,tutor_no_show_at')
       .eq('tutor_id', T.user.id).not('completed_at', 'is', null).order('session_date', { ascending: false }),
     sb.from('availability_dates').select('tutor_id,day,slot,open').eq('tutor_id', T.user.id).gte('day', today()),
   ]);
@@ -83,7 +83,9 @@ function applyForm() {
 const needsLog = r => r.status === 'approved' && !r.completed_at && isPast(r.session_date, r.slot);
 function reqCard(r) {
   const label = sessionLabel(r) || (needsLog(r) ? 'Log this session' : { pending: 'Needs review', approved: 'Approved', declined: 'Declined', cancelled: 'Cancelled' }[r.status]);
-  const upcoming = r.session_date >= today() && !isPast(r.session_date, r.slot);
+  const ms = minsToStart(r.session_date, r.slot);
+  const upcoming = ms > 0;
+  const live = r.status === 'approved' && !r.completed_at && ms > -30;   // until the session ends
   return `<article class="card req ${r.status}">
     <div class="row" style="justify-content:space-between"><h3>${esc(r.child_first)} · ${esc(r.grade)} grade · ${esc(r.subject)}</h3><span class="status ${needsLog(r) ? 'log' : r.completed_at && !r.attended ? 'declined' : r.status}">${label}</span></div>
     <p style="margin-top:6px;font-weight:600">${fmtDate(r.session_date)}, ${fmtTime(r.slot)} · ${esc(r.lang)}</p>
@@ -91,12 +93,15 @@ function reqCard(r) {
     ${needsLog(r) ? `<div class="log-box"><div><b>How did it go?</b><span>Mark this session as done so it counts toward your volunteer hours.</span></div><button class="btn go" data-done="${r.id}">Mark as done</button></div>` : ''}
     ${r.completed_at && r.session_note ? `<div class="note"><b>Your notes:</b> ${esc(r.session_note)}</div>` : ''}
     ${r.note ? `<div class="note">${esc(r.note)}</div>` : ''}
+    ${live && r.late_by === 'parent' ? `<div class="note warn"><b>Heads up:</b> the family is running about ${r.late_minutes} minutes late. Please wait in your Meet.</div>` : ''}
+    ${live && r.late_by === 'tutor' ? `<div class="note">You told the family you're running about ${r.late_minutes} minutes late.</div>` : ''}
+    ${r.status === 'cancelled' && r.cancelled_by ? `<p class="meta" style="margin-top:8px">Cancelled by ${r.cancelled_by === 'parent' ? 'the family' : r.cancelled_by === 'tutor' ? 'you' : 'a club admin'}.</p>` : ''}
     <div class="thumbs">${(T.photos[r.id] || []).map((u, i) => `<button class="th" data-zoom="${esc(u)}" aria-label="Open photo ${i + 1}"><img src="${esc(u)}" alt="Homework photo ${i + 1}"></button>`).join('') || (r.photo_paths.length ? '' : '<span class="meta">Photos were deleted after 30 days.</span>')}</div>
     ${r.status === 'pending' && upcoming ? `<div class="f" style="margin-top:14px"><label for="m-${r.id}">Message to the family (optional)</label>
       <textarea id="m-${r.id}" maxlength="400" placeholder="For example: please have the reading book ready."></textarea></div>
       <div class="row"><button class="btn go" data-answer="${r.id}|1">Approve</button><button class="btn no" data-answer="${r.id}|0">Decline</button></div>` : ''}
-    ${r.status === 'approved' && upcoming ? `<div class="row" style="margin-top:12px"><a class="btn y small" href="${esc(T.priv?.meet_link || '#')}" target="_blank" rel="noopener">Open my Meet</a><button class="btn no small" data-cancel="${r.id}">Cancel session</button></div>
-      <p class="hint">The family got your Meet link by email.</p>` : ''}
+    ${live ? `<div class="row" style="margin-top:12px"><a class="btn y small" href="${esc(T.priv?.meet_link || '#')}" target="_blank" rel="noopener">Open my Meet</a>${ms <= 60 ? `<button class="btn ghost small" data-late="${r.id}">Running late</button>` : ''}<button class="btn no small" data-cancel="${r.id}">Can't make it</button></div>
+      <p class="hint">${ms > 60 ? 'The family got your Meet link by email.' : 'Late or can\'t make it? Tell the family here. We email them right away.'}</p>` : ''}
   </article>`;
 }
 
@@ -228,7 +233,7 @@ function historyView() {
       const k = list[0], mins = list.reduce((n, h) => n + (h.minutes || 0), 0);
       return `<article class="card"><div class="row" style="justify-content:space-between"><h3>${esc(k.child_first)} · ${esc(k.grade)} grade</h3><span class="meta">${list.filter(h => h.attended).length} session${list.length > 1 ? 's' : ''} · ${fmtHours(mins)}</span></div>
         <p class="meta">Parent: ${esc(k.parent_name)}</p>
-        <ul class="hist">${list.map(h => `<li><span class="hd">${fmtDate(h.session_date)}</span><span class="hs ${h.attended ? '' : 'miss'}">${h.attended ? `${h.minutes} min · ${esc(h.subject)}` : "Didn't join"}</span>${h.session_note ? `<span class="hn">${esc(h.session_note)}</span>` : ''}</li>`).join('')}</ul></article>`;
+        <ul class="hist">${list.map(h => `<li><span class="hd">${fmtDate(h.session_date)}</span><span class="hs ${h.attended ? '' : 'miss'}">${h.attended ? `${h.minutes} min · ${esc(h.subject)}` : h.tutor_no_show_at ? "Family says you didn't join" : "Child didn't join"}</span>${h.session_note ? `<span class="hn">${esc(h.session_note)}</span>` : ''}</li>`).join('')}</ul></article>`;
     }).join('')}</div>`;
 }
 
@@ -238,13 +243,14 @@ function doneModal(id) {
     <fieldset class="f seg"><legend>Did ${esc(r.child_first)} join the call?</legend>
       <label><input type="radio" name="joined" value="1" checked><span>Yes, we met</span></label>
       <label><input type="radio" name="joined" value="0"><span>No, they didn't join</span></label></fieldset>
+    <p class="hint" id="d-wait" hidden>Please wait in the Meet at least 10 minutes after the start time before marking this. We'll email the family.</p>
     <div class="f" id="d-mins-wrap"><label for="d-mins">How long was the session?</label>
       <select id="d-mins">${[10, 15, 20, 25, 30].map(m => `<option value="${m}" ${m === 30 ? 'selected' : ''}>${fmtHours(m)}</option>`).join('')}</select></div>
     <div class="f"><label for="d-note">What did you work on? (optional)</label><textarea id="d-note" maxlength="600" placeholder="Practiced subtracting with regrouping. Finished 6 of 8 problems."></textarea>
       <div class="hint">The family can see this note.</div></div>
     <div id="d-err" class="err" role="alert"></div>
     <div class="row"><button class="btn go" type="submit">Save</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>`);
-  $$('#donef input[name=joined]').forEach(i => i.addEventListener('change', () => { $('#d-mins-wrap').hidden = $('#donef input[name=joined]:checked').value === '0'; }));
+  $$('#donef input[name=joined]').forEach(i => i.addEventListener('change', () => { const no = $('#donef input[name=joined]:checked').value === '0'; $('#d-mins-wrap').hidden = no; $('#d-wait').hidden = !no; }));
   $('#donef').addEventListener('submit', async e => {
     e.preventDefault();
     const joined = $('#donef input[name=joined]:checked').value === '1';
@@ -258,7 +264,7 @@ function doneModal(id) {
 
 /* ---------- events ---------- */
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-tab],[data-tog],[data-answer],[data-cancel],[data-zoom],[data-done],[data-cal],[data-tweek],[data-dayoff]');
+  const b = e.target.closest('[data-tab],[data-tog],[data-answer],[data-cancel],[data-zoom],[data-done],[data-cal],[data-tweek],[data-dayoff],[data-late]');
   if (!b || b.disabled) return;
   if (b.dataset.tweek) { T.week = +b.dataset.tweek; return swap(dashboard); }
   if (b.dataset.cal) { const [d, dow, sl] = b.dataset.cal.split('|'); return toggleDate(d, +dow, sl); }
@@ -282,10 +288,15 @@ document.addEventListener('click', async e => {
     if (error) { b.disabled = false; return toast(error.message); }
     toast(yes === '1' ? 'Approved! The family gets your Meet link by email.' : 'Declined. We let the family know.');
     await loadDashboard(); dashboard();
+  } else if (b.dataset.late) {
+    lateModal(T.reqs.find(q => q.id === b.dataset.late), async () => { await loadDashboard(); dashboard(); });
   } else if (b.dataset.cancel) {
-    const { error } = await sb.rpc('cancel_request', { req: b.dataset.cancel });
-    if (error) return toast(error.message);
-    toast('Session cancelled. We emailed the family.'); await loadDashboard(); dashboard();
+    const id = b.dataset.cancel;
+    askConfirm("Can't make it?", "We'll cancel this session and email the family right away so they can book someone else.", 'Yes, cancel it', async () => {
+      const { error } = await sb.rpc('cancel_request', { req: id });
+      if (error) return toast(error.message);
+      toast('Session cancelled. We emailed the family.'); await loadDashboard(); dashboard();
+    });
   }
 });
 
