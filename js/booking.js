@@ -77,6 +77,7 @@ function openForm(tid, date, slot) {
     <div class="ph"><div><h2>Request a session</h2><p class="meta">A parent or guardian must fill this out.</p></div>
       <button type="button" class="x" data-close aria-label="Close">✕</button></div>
     <div class="pick">${esc(t.name)} · ${fmtDate(date)} · ${fmtTime(slot)}</div>
+    <div class="deal-mini"><b>Quick reminder</b> Tutors help with the part your child is stuck on, for 30 minutes or less. They won't do the whole assignment, and that's how kids learn.</div>
     <div class="f"><label for="b-parent">Your name</label><input type="text" id="b-parent" value="${esc(saved.name || '')}" autocomplete="name"></div>
     <div class="f2">
       <div class="f"><label for="b-child">Child's first name</label><input type="text" id="b-child"><div class="hint">First name only.</div></div>
@@ -84,7 +85,7 @@ function openForm(tid, date, slot) {
     <div class="f2">
       <div class="f"><label for="b-lang">Language</label><select id="b-lang">${[...t.langs, 'English'].map(l => `<option>${esc(l)}</option>`).join('')}</select></div>
       <div class="f"><label for="b-subj">Subject</label><select id="b-subj">${subjects.map(s => `<option>${esc(s)}</option>`).join('')}</select></div></div>
-    <div class="f"><label for="b-note">What does your child need help with?</label><textarea id="b-note" maxlength="600"></textarea></div>
+    <div class="f"><label for="b-note">Which part is your child stuck on?</label><textarea id="b-note" maxlength="600" placeholder="For example: doesn't understand the directions for the word problems on page 2."></textarea></div>
     <div class="f"><label for="b-photos">Photos of the homework</label>
       <div class="drop">Add up to ${C.MAX_PHOTOS} photos. Cover your child's last name and school first.<input type="file" id="b-photos" accept="image/*" multiple></div>
       <div class="thumbs" id="b-thumbs"></div></div>
@@ -92,6 +93,7 @@ function openForm(tid, date, slot) {
       <label class="check"><input type="checkbox" id="b-c1"><span>I am this child's parent or legal guardian, and I give permission for this tutoring session.</span></label>
       <label class="check"><input type="checkbox" id="b-c2"><span>An adult will be nearby during the video call.</span></label>
       <label class="check"><input type="checkbox" id="b-c3"><span>I removed my child's full name and school from the photos.</span></label>
+      <label class="check"><input type="checkbox" id="b-c5"><span>My child is learning English, and I understand the tutor helps with the hard part in <b>30 minutes or less</b>. They don't do the whole homework.</span></label>
       <label class="check"><input type="checkbox" id="b-c4"><span>I agree to the <a href="rules.html" target="_blank">Terms, Privacy Policy and Parent Consent</a>.</span></label></div>
     <div id="b-err" class="err" role="alert"></div>
     <div class="row" style="margin-top:10px"><button class="btn" type="submit">Send request</button><button type="button" class="btn ghost" data-close>Cancel</button></div>
@@ -120,7 +122,7 @@ async function submitRequest(e) {
   if (v('#b-parent').length < 2) errs.push('your name');
   if (!v('#b-child')) errs.push("your child's first name");
   if (!d.photos.length) errs.push('at least one homework photo');
-  if (!['#b-c1', '#b-c2', '#b-c3', '#b-c4'].every(id => $(id).checked)) errs.push('all four checkboxes');
+  if (!['#b-c1', '#b-c2', '#b-c3', '#b-c4', '#b-c5'].every(id => $(id).checked)) errs.push('all the checkboxes');
   if (errs.length) { $('#b-err').textContent = `Please add ${errs.join(', ')}.`; return; }
 
   const btn = e.target.querySelector('button[type=submit]');

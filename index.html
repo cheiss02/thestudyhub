@@ -6,7 +6,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://ekjyotgllvleiupzawog.supabase.co; connect-src https://ekjyotgllvleiupzawog.supabase.co wss://ekjyotgllvleiupzawog.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Free Bilingual Homework Help for Kids | The Study Hub</title>
-  <meta name="description" content="Free online homework help for elementary students learning English. Bilingual high school volunteers tutor in Spanish, Mandarin, Korean, Vietnamese, Arabic and more over Google Meet.">
+  <meta name="description" content="Free 30-minute homework help for elementary English learners. Bilingual high school volunteers tutor in Spanish, Mandarin, Korean, Vietnamese, Arabic and more over Google Meet.">
   <link rel="canonical" href="https://thestudyhub.us/">
   <meta name="theme-color" content="#fdf4e1">
 
@@ -28,44 +28,115 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=202611131541">
+  <link rel="stylesheet" href="css/styles.css?v=202611131611">
 
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "EducationalOrganization",
-        "@id": "https://thestudyhub.us/#org",
-        "name": "The Study Hub",
-        "url": "https://thestudyhub.us/",
-        "logo": "https://thestudyhub.us/images/apple-touch-icon.png",
-        "description": "A high school student club where bilingual volunteers give free online homework help to elementary students who are learning English.",
-        "email": "help@thestudyhub.us",
-        "areaServed": "Orange County, California",
-        "knowsLanguage": ["en", "es", "zh", "ko", "vi", "ar", "tl"],
-        "sameAs": ["https://www.instagram.com/the_studyhub1/"]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "EducationalOrganization",
+      "@id": "https://thestudyhub.us/#org",
+      "name": "The Study Hub",
+      "url": "https://thestudyhub.us/",
+      "logo": "https://thestudyhub.us/images/apple-touch-icon.png",
+      "description": "A high school student club where bilingual volunteers give free online homework help to elementary students who are learning English.",
+      "email": "help@thestudyhub.us",
+      "areaServed": "Orange County, California",
+      "knowsLanguage": [
+        "en",
+        "es",
+        "zh",
+        "ko",
+        "vi",
+        "ar",
+        "tl"
+      ],
+      "sameAs": [
+        "https://www.instagram.com/the_studyhub1/"
+      ]
+    },
+    {
+      "@type": "Service",
+      "name": "Free bilingual homework help",
+      "provider": {
+        "@id": "https://thestudyhub.us/#org"
       },
-      {
-        "@type": "Service",
-        "name": "Free bilingual homework help",
-        "provider": { "@id": "https://thestudyhub.us/#org" },
-        "serviceType": "Online tutoring",
-        "audience": { "@type": "EducationalAudience", "educationalRole": "student", "audienceType": "Elementary school English learners" },
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      "serviceType": "Online tutoring",
+      "audience": {
+        "@type": "EducationalAudience",
+        "educationalRole": "student",
+        "audienceType": "Elementary school English learners"
       },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          { "@type": "Question", "name": "Is The Study Hub really free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Every session is free. Tutors are student volunteers and we never ask for payment information." } },
-          { "@type": "Question", "name": "Who are the tutors?", "acceptedAnswer": { "@type": "Answer", "text": "High school students who speak English and at least one other language. A club officer approves every tutor, and tutors follow a code of conduct." } },
-          { "@type": "Question", "name": "What does my child need?", "acceptedAnswer": { "@type": "Answer", "text": "A device with a camera and internet, Google Meet, and the homework. A parent or guardian books the session and stays nearby during the call." } },
-          { "@type": "Question", "name": "Which languages do tutors speak?", "acceptedAnswer": { "@type": "Answer", "text": "Spanish, Mandarin, Korean, Vietnamese, Arabic, Tagalog and more, depending on which volunteers are available each week." } },
-          { "@type": "Question", "name": "What happens to the homework photos?", "acceptedAnswer": { "@type": "Answer", "text": "Only the tutor you chose and club officers can see them, and they are deleted automatically 30 days after the session." } }
-        ]
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
       }
-    ]
-  }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Who can sign up for The Study Hub?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Elementary students (TK to 5th grade) who are learning English and need help understanding their homework. A parent or guardian signs up and books for them."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Will the tutor do all of my child's homework?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Tutors explain the hard part so the child can finish on their own. Sessions are 30 minutes or less, one child at a time."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is The Study Hub really free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Every session is free. Tutors are student volunteers and we never ask for payment information."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who are the tutors?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "High school students who speak English and at least one other language. A club officer approves every tutor, and tutors follow a code of conduct."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does my child need?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A device with a camera and internet, Google Meet, and the homework. A parent or guardian books the session and stays nearby during the call."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which languages do tutors speak?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Spanish, Mandarin, Korean, Vietnamese, Arabic, Tagalog and more, depending on which volunteers are available each week."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens to the homework photos?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Only the tutor you chose and club officers can see them, and they are deleted automatically 30 days after the session."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
 </head>
 <body data-page="find">
@@ -109,9 +180,27 @@
       </div>
     </section>
 
+    <section class="band" aria-labelledby="deal-h">
+      <div class="wrap deal">
+        <div class="deal-head">
+          <span class="free">READ ME FIRST</span>
+          <h2 id="deal-h">We're homework coaches, <span class="help">not homework doers.</span></h2>
+          <p>Our tutors are high school volunteers who give up their afternoons to help. Here's how we keep it fun, fair and useful for everyone.</p>
+        </div>
+        <ul class="deal-list">
+          <li><b>We help with the tricky part</b><span>The directions they can't read yet, a new word, the first problem. Then your child finishes the rest on their own. That's how confidence grows.</span></li>
+          <li><b>30 minutes or less</b><span>One child per session, short and focused. Bring the one part your child is stuck on, not the whole packet.</span></li>
+          <li><b>For English learners</b><span>Right now The Study Hub is for elementary students who are learning English (ESL / ELD) and get stuck because the homework is in English.</span></li>
+          <li><b>You're still the homework hero</b><span>Please keep doing daily homework together at home. We're here for the moments when English gets in the way.</span></li>
+        </ul>
+      </div>
+    </section>
+
     <section class="band" aria-labelledby="faq-h">
       <div class="wrap faq">
         <h2 id="faq-h">Questions parents ask</h2>
+        <details><summary>Who can sign up?</summary><p>For now, elementary students (TK to 5th grade) who are learning English and need help understanding their homework. A parent or guardian signs up and books for them.</p></details>
+        <details><summary>Will the tutor do all of my child's homework?</summary><p>No. Tutors explain the hard part so your child can finish on their own. Sessions are 30 minutes or less, one child at a time. Daily homework help still happens at home with you.</p></details>
         <details><summary>Is it really free?</summary><p>Yes. Every session is free. Tutors are student volunteers and we never ask for payment information.</p></details>
         <details><summary>Who are the tutors?</summary><p>High school students who speak English and at least one other language. A club officer approves every tutor, and tutors follow our <a href="rules.html#conduct">code of conduct</a>.</p></details>
         <details><summary>What does my child need?</summary><p>A phone, tablet or computer with a camera, Google Meet, and the homework. A parent or guardian books the session and stays nearby during the call.</p></details>
@@ -126,8 +215,8 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.min.js" integrity="sha384-yiVMs0R/Jyz7OhoXa/DsEMUSBLjEhr/QJta2ONO+zB6I8/GmNg/7AUFrZmAJV7KV" crossorigin="anonymous"></script>
-  <script src="js/config.js?v=202611131541"></script>
-  <script src="js/app.js?v=202611131541"></script>
-  <script src="js/booking.js?v=202611131541"></script>
+  <script src="js/config.js?v=202611131611"></script>
+  <script src="js/app.js?v=202611131611"></script>
+  <script src="js/booking.js?v=202611131611"></script>
 </body>
 </html>

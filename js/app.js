@@ -260,7 +260,8 @@ async function renderChrome(active) {
 
 /* ---------- family accounts (approved by a club admin) ---------- */
 function familyFormHTML() {
-  return `<div class="f"><label for="fm-name">Your name (parent or guardian)</label><input type="text" id="fm-name" maxlength="60" autocomplete="name"></div>
+  return `<div class="deal-mini"><b>Good to know</b> The Study Hub is for elementary students who are <b>learning English</b>. Tutors help with the hard part of the homework, 30 minutes or less per session.</div>
+    <div class="f"><label for="fm-name">Your name (parent or guardian)</label><input type="text" id="fm-name" maxlength="60" autocomplete="name"></div>
     <div class="f2"><div class="f"><label for="fm-city">City</label><input type="text" id="fm-city" maxlength="60" placeholder="Fullerton"></div>
       <div class="f"><label for="fm-lang">Language at home</label><select id="fm-lang">${[...C.LANGUAGES, 'English', 'Other'].map(l => `<option>${esc(l)}</option>`).join('')}</select></div></div>
     <div class="f"><label for="fm-heard">How did you hear about us?</label><input type="text" id="fm-heard" maxlength="200" placeholder="Teacher, school flyer, Instagram, a friend…"></div>

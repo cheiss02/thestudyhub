@@ -239,7 +239,7 @@ function doneModal(id) {
       <label><input type="radio" name="joined" value="1" checked><span>Yes, we met</span></label>
       <label><input type="radio" name="joined" value="0"><span>No, they didn't join</span></label></fieldset>
     <div class="f" id="d-mins-wrap"><label for="d-mins">How long was the session?</label>
-      <select id="d-mins">${[15, 20, 30, 45, 60, 75, 90].map(m => `<option value="${m}" ${m === 30 ? 'selected' : ''}>${fmtHours(m)}</option>`).join('')}</select></div>
+      <select id="d-mins">${[10, 15, 20, 25, 30].map(m => `<option value="${m}" ${m === 30 ? 'selected' : ''}>${fmtHours(m)}</option>`).join('')}</select></div>
     <div class="f"><label for="d-note">What did you work on? (optional)</label><textarea id="d-note" maxlength="600" placeholder="Practiced subtracting with regrouping. Finished 6 of 8 problems."></textarea>
       <div class="hint">The family can see this note.</div></div>
     <div id="d-err" class="err" role="alert"></div>
