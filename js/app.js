@@ -104,7 +104,7 @@ async function myRole(user) {
 const ROLES = {
   parent: { up: 'Create a free parent account', in: 'Parent sign-in', msg: 'Use any email. We send your session links there.', upPage: 'account.html', page: 'account.html' },
   tutor:  { up: 'Sign up to tutor', in: 'Tutor sign-in', msg: 'Use your school email.', upPage: 'tutor.html', page: 'tutor.html' },
-  admin:  { up: 'Club officer sign-in', in: 'Club officer sign-in', msg: 'Use the email the club added as an admin.', upPage: 'admin.html', page: 'admin.html' },
+  admin:  { up: 'Admin sign-in', in: 'Admin sign-in', msg: 'Use the email on the club admin list, like help@thestudyhub.us.', upPage: 'admin.html', page: 'admin.html' },
 };
 // Remember the last email used on this device so returning people sign in in one tap.
 const LAST_KEY = 'studyhub-last-signin';
@@ -151,7 +151,7 @@ function signInModal(role, opts = {}) {
     if (!/^\S+@\S+\.\S+$/.test(email)) { $('#si-err').textContent = 'Please enter a valid email.'; return; }
     const btn = e.target.querySelector('button[type=submit]'); const label = btn.textContent; btn.disabled = true; btn.textContent = 'Sending…';
     // Sign in only works for existing accounts; Get started creates one (or signs in if it already exists).
-    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: dest, shouldCreateUser: mode === 'up' && role !== 'admin' } });
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: dest, shouldCreateUser: mode === 'up' || role === 'admin' } });
     btn.disabled = false; btn.textContent = label;
     if (error) {
       if (/signups? not allowed|user not found|otp_disabled/i.test(error.message + (error.code || ''))) {

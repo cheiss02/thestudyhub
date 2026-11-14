@@ -214,7 +214,7 @@ document.addEventListener('click', async e => {
   const { user, admin } = await renderChrome('admin');
   const msg = h => { $('#main').innerHTML = `<section class="band"><div class="wrap">${h}</div></section>`; };
   if (!READY) return msg('<div class="empty">Coming soon.</div>');
-  if (!user) { msg('<div class="card intro-card"><h1>Club admin</h1><p class="meta" style="margin:10px 0 18px">Only for club admins. If you\'re not on the admin list, you won\'t be able to sign in here.</p><button class="btn" id="go-in">Admin sign-in</button></div>'); $('#go-in').addEventListener('click', () => signInModal('admin', { mode: 'in' })); return; }
+  if (!user) { msg('<div class="card intro-card"><h1>Club admin</h1><p class="meta" style="margin:10px 0 18px">Only for club admins. Sign in with an email on the admin list (for example help@thestudyhub.us). We email you a 6-digit code.</p><button class="btn" id="go-in">Admin sign-in</button></div>'); $('#go-in').addEventListener('click', () => signInModal('admin', { mode: 'in' })); return; }
   if (!admin) return msg(`<div class="card intro-card"><h1>Club admin</h1><p class="meta" style="margin-top:10px">This page is only for club admins. ${esc(user.email)} isn't on the admin list. A club admin can add you.</p><a class="btn ghost" href="index.html" style="margin-top:16px">Back to Find a tutor</a></div>`);
   await load(); render();
 })();
