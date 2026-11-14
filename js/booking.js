@@ -74,7 +74,7 @@ function openForm(tid, date, slot) {
   state.draft = { tid, date, slot, photos: [] };
   const subjects = [...new Set([...t.subjects, 'Any homework'])];
   openModal(`<form class="panel" id="bookf" novalidate>
-    <div class="ph"><div><h2>Request a session</h2><p class="meta">A parent or guardian must fill this out.</p></div>
+    <div class="ph"><div><h2>Request a session</h2><p class="meta">A parent or guardian must fill this out. <a href="help.html#parents" target="_blank">Help</a></p></div>
       <button type="button" class="x" data-close aria-label="Close">✕</button></div>
     <div class="pick">${esc(t.name)} · ${fmtDate(date)} · ${fmtTime(slot)}</div>
     <div class="deal-mini"><b>Quick reminder</b> Tutors help with the part your child is stuck on, for 30 minutes or less. They won't do the whole assignment, and that's how kids learn.</div>

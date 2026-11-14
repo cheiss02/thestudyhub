@@ -401,3 +401,22 @@ details[open] p { animation: rise .3s var(--ease); }
 .es-nav { display: flex; }
 .sched-n { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--yellow); border: 2px solid var(--edge); color: #1d2940; font: 800 17px Poppins, sans-serif; margin-right: 10px; vertical-align: 3px; }
 .sched-n.blue { background: var(--blue); }
+/* Help page */
+.help-sec.alt { background: var(--card); border-block: 2px solid var(--line); }
+.help-sec .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 24px 48px; align-items: start; }
+.help-head { position: sticky; top: 16px; display: grid; gap: 10px; }
+.help-tag { justify-self: start; border: 2px solid var(--edge); border-radius: 999px; padding: 3px 14px; font: 800 14px Poppins, sans-serif; background: var(--card); }
+.help-tag.parent { background: var(--blue); color: #1d2940; }
+.help-tag.tutor { background: var(--yellow); color: #1d2940; }
+.help-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; counter-reset: h; }
+.help-steps > li { counter-increment: h; position: relative; padding: 16px 18px 16px 72px; background: var(--card); border: 2px solid var(--line); border-radius: 18px; display: grid; gap: 4px; }
+.help-sec.alt .help-steps > li { background: var(--bg); }
+.help-steps > li::before { content: counter(h); position: absolute; left: 16px; top: 14px; width: 40px; height: 40px; border-radius: 50%; background: var(--yellow); border: 2px solid var(--edge); color: #1d2940; display: grid; place-items: center; font: 800 18px Poppins, sans-serif; }
+.help-steps > li > b { font: 700 18px Poppins, sans-serif; }
+.help-link { display: inline-block; margin-left: 10px; font: 600 14px Inter, sans-serif; vertical-align: middle; }
+h1 + .help-link { margin: 8px 0 0; display: block; }
+@media (max-width: 860px) { .help-sec .wrap { grid-template-columns: 1fr; } .help-head { position: static; } }
+.help-more { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 15px; }
+.help-more li { padding: 0; border: 0; background: none; display: list-item; }
+.help-more li::before { content: none; }
+.help-steps .tip { margin-top: 8px; background: var(--ysoft); border-radius: 10px; padding: 8px 12px; font-size: 14px; }

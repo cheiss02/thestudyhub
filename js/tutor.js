@@ -192,13 +192,13 @@ function dashboard() {
   if (T.tab === 'requests') body = list.length ? `<div class="stack1">${list.map(reqCard).join('')}</div>` : '<div class="empty">No requests yet. Families see your open times on the Find a tutor page.</div>';
   else if (T.tab === 'history') body = historyView();
   else if (T.tab === 'week') body = `<div class="sched">
-    <div class="card"><h2><span class="sched-n">1</span>Every week</h2><p class="meta" style="margin:6px 0 14px">Your usual times. <b>Set them once</b> and they repeat every week. Closing a time doesn't cancel sessions already booked.</p>${weekEditor()}</div>
+    <div class="card"><h2><span class="sched-n">1</span>Every week <a class="help-link" href="help.html#tutors">How does this work?</a></h2><p class="meta" style="margin:6px 0 14px">Your usual times. <b>Set them once</b> and they repeat every week. Closing a time doesn't cancel sessions already booked.</p>${weekEditor()}</div>
     <div class="card"><h2><span class="sched-n blue">2</span>Calendar</h2><p class="meta" style="margin:6px 0 14px">For <b>one specific date</b> only, up to ${C.WEEKS_AHEAD} weeks ahead. Tap a time to change just that day: <span class="key on">Open</span> <span class="key extra">Extra</span> <span class="key off">Off</span>. Use <b>Day off</b> for games, tests and holidays. Booked sessions show the child's name.</p>
       ${weekNav(T.week, C.WEEKS_AHEAD, 'data-tweek')}${calendarEditor()}</div></div>`;
   else body = profileForm();
   page(`${T.me.status === 'paused' ? '<div class="warn" style="margin-bottom:18px">Your profile is paused by the club, so families can\'t see your times right now.</div>' : ''}
     ${!T.priv?.meet_link ? '<div class="warn" style="margin-bottom:18px">Add your Google Meet link in <b>Profile</b> so you can approve requests.</div>' : ''}
-    <div class="top"><div><h1>Hi, ${esc(T.me.name.split(' ')[0])}</h1><p>${[pending ? `${pending} request${pending > 1 ? 's' : ''} waiting for you. Look at the homework photos, then approve or decline within 48 hours.` : '', toLog ? `${toLog} finished session${toLog > 1 ? 's' : ''} to mark as done.` : ''].filter(Boolean).join(' ') || "You're all caught up."}</p></div>
+    <div class="top"><div><h1>Hi, ${esc(T.me.name.split(' ')[0])}</h1><a class="help-link" href="help.html#tutors">Tutor guide</a><p>${[pending ? `${pending} request${pending > 1 ? 's' : ''} waiting for you. Look at the homework photos, then approve or decline within 48 hours.` : '', toLog ? `${toLog} finished session${toLog > 1 ? 's' : ''} to mark as done.` : ''].filter(Boolean).join(' ') || "You're all caught up."}</p></div>
     <div class="stat mini"><b>${fmtHours(T.history.reduce((n, h) => n + (h.minutes || 0), 0))}</b><span>volunteer time logged</span></div></div>
     <div class="tabs">${[['requests', `Requests${pending + toLog ? ` (${pending + toLog})` : ''}`], ['week', 'My schedule'], ['history', 'History'], ['profile', 'Profile']].map(([k, l]) => `<button class="tab ${T.tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>${body}`);
   $('#proff')?.addEventListener('submit', saveProfile);

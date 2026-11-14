@@ -234,6 +234,7 @@ async function renderChrome(active) {
   if (user) links.push(['account.html', 'account', 'My requests']);
   links.push(['tutor.html', 'tutor', role.tutor && role.tutor !== 'declined' ? 'Tutor dashboard' : 'Become a tutor']);
   if (role.admin) links.push(['admin.html', 'admin', 'Club admin']);
+  links.push(['help.html', 'help', 'Help']);
   links.push(['rules.html', 'rules', 'Rules & privacy']);
   const acct = !READY ? '' : user
     ? `<span class="me" title="${esc(user.email)}"><span class="me-av" aria-hidden="true">${esc(user.email[0].toUpperCase())}</span><span class="me-mail">${esc(user.email)}</span></span><button class="nav-btn" id="nav-out">Sign out</button>`

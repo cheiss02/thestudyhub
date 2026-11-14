@@ -51,7 +51,7 @@ function render() {
   const statusLabel = { pending: 'Needs review', approved: 'Approved', declined: 'Declined', cancelled: 'Cancelled' };
   const M = metrics();
   $('#main').innerHTML = `<section class="band"><div class="wrap">
-    <div class="top"><div><h1>Club admin</h1><p>Approve new families and tutors, pause anyone who can't tutor, manage admins and keep an eye on sessions.</p></div></div>
+    <div class="top"><div><h1>Club admin</h1><p>Approve new families and tutors, pause anyone who can't tutor, manage admins and keep an eye on sessions. <a href="help.html#admins">Admin guide</a></p></div></div>
     <h2 style="margin-bottom:12px">Impact</h2>
     <div class="stats">
       ${resettable('hours', fmtHours(M.hours), 'of free help given')}

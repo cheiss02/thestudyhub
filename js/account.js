@@ -29,7 +29,7 @@ function render(user) {
     ${upcoming.includes(r) ? `<div class="row" style="margin-top:12px"><button class="btn no small" data-cancel="${r.id}">Cancel session</button></div>` : ''}
   </article>`;
   $('#main').innerHTML = `<section class="band"><div class="wrap">
-    <div class="top"><div><h1>My requests</h1><p>Signed in as ${esc(user.email)}. We also email you when a tutor answers.</p></div><a class="btn y" href="index.html">Book another session</a></div>
+    <div class="top"><div><h1>My requests</h1><p>Signed in as ${esc(user.email)}. We also email you when a tutor answers. <a href="help.html#parents">How it works</a></p></div><a class="btn y" href="index.html">Book another session</a></div>
     <h2 style="margin-bottom:12px">Coming up</h2>
     ${upcoming.length ? `<div class="stack1">${upcoming.map(card).join('')}</div>` : '<div class="empty">No upcoming sessions. <a href="index.html">Find a tutor</a>.</div>'}
     ${done.length ? `<h2 style="margin:28px 0 12px">Session history</h2>
