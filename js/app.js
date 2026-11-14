@@ -253,7 +253,7 @@ async function renderChrome(active) {
   $('#nav-up')?.addEventListener('click', () => signInModal(null, { mode: 'up' }));
   $$('[data-start]').forEach(b => b.addEventListener('click', () => signInModal(b.dataset.start, { mode: 'up' })));
   $('#site-footer').innerHTML = `<div class="wrap"><span>The Study Hub · a student club · always free · <a href="mailto:${C.CLUB_EMAIL}">${C.CLUB_EMAIL}</a></span>
-    <span><a href="${C.INSTAGRAM}">Instagram</a> · <a href="rules.html">Terms, privacy and safety</a></span></div>`;
+    <span><a href="es.html" lang="es">Español</a> · <a href="${C.INSTAGRAM}">Instagram</a> · <a href="rules.html">Terms, privacy and safety</a></span></div>`;
   if (!READY) $('#site-header').insertAdjacentHTML('afterend', '<div class="notice">Setup in progress: this site isn\'t connected to its database yet.</div>');
   return { user, admin: role.admin, tutorStatus: role.tutor, family: role.family };
 }

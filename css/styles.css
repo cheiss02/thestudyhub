@@ -398,3 +398,4 @@ details[open] p { animation: rise .3s var(--ease); }
 .deal-mini b { display: block; font-family: Poppins, sans-serif; margin-bottom: 2px; }
 @media (max-width: 860px) { .deal { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .deal-list { grid-template-columns: 1fr; } }
+.es-nav { display: flex; }
