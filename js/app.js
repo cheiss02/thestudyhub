@@ -234,6 +234,7 @@ async function renderChrome(active) {
   if (user) links.push(['account.html', 'account', 'My requests']);
   links.push(['tutor.html', 'tutor', role.tutor && role.tutor !== 'declined' ? 'Tutor dashboard' : 'Become a tutor']);
   if (role.admin) links.push(['admin.html', 'admin', 'Club admin']);
+  links.push(['about.html', 'about', 'About']);
   links.push(['help.html', 'help', 'Help']);
   links.push(['rules.html', 'rules', 'Rules & privacy']);
   const acct = !READY ? '' : user
